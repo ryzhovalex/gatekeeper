@@ -1,6 +1,7 @@
 #![allow(unreachable_code)]
 #[macro_use]
 extern crate rouille;
+mod db;
 
 fn main() {
     rouille::start_server("0.0.0.0:3000", move |request| {
@@ -29,7 +30,7 @@ fn main() {
             },
 
             (GET) (/{id: u32}) => {
-                // If the request's URL is for example `/5`, we jump here.
+                // If the request'sdsdiURL is for example `/5`, we jump here.
                 //
                 // The `router!` macro will attempt to parse the identifier (eg. `5`) as a `u32`. If
                 // the parsing fails (for example if the URL is `/hello`), then this block is not
