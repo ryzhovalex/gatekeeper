@@ -13,11 +13,11 @@ use user::set_rt_for_username;
 extern crate rouille;
 mod common;
 mod db;
-mod time;
 mod err;
 mod password;
 mod path;
 mod res;
+mod time;
 mod token;
 mod user;
 
@@ -60,11 +60,6 @@ struct Reg {
     pub firstname: String,
     pub patronym: String,
     pub surname: String,
-}
-
-struct RpcArgs {
-    req: Request,
-    con: Client
 }
 
 #[allow(non_snake_case)]
@@ -138,9 +133,7 @@ fn main() {
     file.read_to_string(&mut content).unwrap();
 
     let apprc: Apprc = serde_yml::from_str(&content).unwrap();
-    let mut con = db::con(&apprc.sql).unwrap();
-    db::init(&mut con);
-    con.close().unwrap();
+    db::init(&apprc);
     rouille::start_server("0.0.0.0:3000", move |request| {
         router!(request,
             (POST) (/rpc/reg) => {

@@ -1,4 +1,4 @@
-use crate::{res::Res, SqlCfg};
+use crate::{res::Res, Apprc, SqlCfg};
 use postgres::{Client, NoTls};
 
 pub fn con(cfg: &SqlCfg) -> Res<Client> {
@@ -14,10 +14,11 @@ pub fn con(cfg: &SqlCfg) -> Res<Client> {
     Ok(db)
 }
 
-pub fn init(con: &mut Client) {
+pub fn init(apprc: &Apprc) {
+    let mut con = con(&apprc.sql).unwrap();
     con.batch_execute(
         "
-        CREATE TABLE user (
+        CREATE TABLE appuser (
             id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             hpassword TEXT NOT NULL,
@@ -31,7 +32,7 @@ pub fn init(con: &mut Client) {
         );
         CREATE TABLE user_change (
             id SERIAL PRIMARY KEY,
-            user_id SERIAL REFERENCES user(id),
+            user_id SERIAL REFERENCES appuser(id),
             domain_id SERIAL REFERENCES domain(id),
             action VARCHAR(256) NOT NULL
         );
@@ -42,4 +43,5 @@ pub fn init(con: &mut Client) {
     ",
     )
     .unwrap();
+    con.close().unwrap();
 }

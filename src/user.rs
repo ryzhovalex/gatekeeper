@@ -1,7 +1,9 @@
 use postgres::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::{common::NULL, db, err::Err, password::hash_password, res::Res, Apprc, Reg};
+use crate::{
+    common::NULL, db, err::Err, password::hash_password, res::Res, Apprc, Reg,
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct User {
@@ -30,19 +32,24 @@ pub fn create(data: &Reg, apprc: &Apprc) -> Res<User> {
     let hpassword = hash_password(&data.password).unwrap();
     con.execute(
         "
-            INSERT INTO user (username, hpassword)
+            INSERT INTO appuser (username, hpassword)
             VALUES ($1, $2)
         ",
         &[&data.username, &hpassword],
-    ).unwrap();
-    let row = con.query_one(
-        "SELECT * FROM user WHERE username = $1", &[&data.username]).unwrap();
+    )
+    .unwrap();
+    let row = con
+        .query_one(
+            "SELECT * FROM appuser WHERE username = $1",
+            &[&data.username],
+        )
+        .unwrap();
     Ok(User {
         id: row.get("id"),
         username: row.get("username"),
         firstname: row.get("firstname"),
         patronym: row.get("patronym"),
-        surname: row.get("surname")
+        surname: row.get("surname"),
     })
 }
 
