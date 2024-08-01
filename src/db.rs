@@ -1,26 +1,28 @@
-use mongodb::sync::{Client, options::ClientOptions};
+use crate::{res::Res, SqlCfg};
+use postgres::{Client, NoTls};
 
-pub fn conn() -> Result<(), Error> {
-    // Parse a connection string into an options struct.
-    let mut client_options = ClientOptions::parse(
-        "mongodb://localhost:27017");
+pub fn con(cfg: SqlCfg) -> Res<Client> {
+    let db = Client::connect(
+        format!(
+            "dbname={} host={} port={} user={} password={}",
+            cfg.dbname, cfg.host, cfg.port, cfg.user, cfg.password
+        )
+        .as_str(),
+        NoTls,
+    )
+    .unwrap();
+    Ok(db)
+}
 
-    // Manually set an option.
-    client_options.app_name = Some("My App".to_string());
-
-    // Get a handle to the deployment.
-    let client = Client::with_options(client_options)?;
-
-    // List the names of the databases in that deployment.
-    for db_name in client.list_database_names(None, None) {
-        println!("{:?}", db_name);
-    }
-
-    // Get a handle to a database.
-    let db = client.database("gatekeeper_dev");
-
-    // List the names of the collections in that database.
-    for collection_name in db.list_collection_names(None) {
-        println!("{:?}", collection_name);
-    }
+pub fn init(con: &mut Client) {
+    con.batch_execute(
+        "
+        CREATE TABLE user (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL,
+            password_hash TEXT NOT NULL
+        )
+    ",
+    )
+    .unwrap();
 }

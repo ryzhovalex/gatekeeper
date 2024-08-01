@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+argon2 = "0.5.3"
+colog = "1.3.0"
+jwt = "0.16.0"
+postgres = "0.19.8"
 rouille = "3.6.2"
-
-[dependencies.mongodb]
-version = "2.8.2"
-features = ["tokio-sync"]
+serde = "1.0.204"
+serde_json = "1.0.121"
+serde_yml = "0.0.11"
 

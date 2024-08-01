@@ -1,0 +1,6 @@
+sql:
+  host: localhost
+  port: 9005
+  dbname: gatekeeper_test
+  user: ryzhovalex
+  password: pass
