@@ -51,6 +51,27 @@ struct Login {
     password: String,
 }
 
+#[derive(Deserialize)]
+struct Reg {
+    pub username: String,
+    pub password: String,
+    pub firstname: String,
+    pub patronym: String,
+    pub surname: String
+}
+
+#[allow(non_snake_case)]
+fn rpc__reg(req: &&Request) -> Response {
+    let Ok(reg) = rouille::input::json_input::<Reg>(req) else {
+        let err = err::Err::new(
+            "val_err".to_string(),
+            format!("invalid reg data"));
+        return Response::json(&err);
+    };
+    let user = user::create(&reg);
+    Response::json(&user)
+}
+
 /// Logins user into the system.
 ///
 /// All other login sessions are discarded (only 1 refresh token is possible
@@ -59,8 +80,12 @@ struct Login {
 /// Returns refresh token.
 #[allow(non_snake_case)]
 fn rpc__login(req: &&Request) -> Response {
-    let login: Login = try_or_400!(
-        rouille::input::json_input(req));
+    let Ok(login) = rouille::input::json_input::<Login>(req) else {
+        let err = err::Err::new(
+            "val_err".to_string(),
+            format!("invalid login data"));
+        return Response::json(&err);
+    };
     let Ok(user) = user::get_by_username(&login.username) else {
         let err = err::Err::new(
             "val_err".to_string(),
@@ -70,6 +95,16 @@ fn rpc__login(req: &&Request) -> Response {
     let rt = token::create_rt(user.sid).unwrap();
     set_rt_for_username(&login.username, &rt).unwrap();
     Response::text(rt)
+}
+
+#[allow(non_snake_case)]
+fn rpc__logout(req: &&Request) -> Response {
+    todo!();
+}
+
+#[allow(non_snake_case)]
+fn rpc__current(req: &&Request) -> Response {
+    todo!();
 }
 
 fn main() {
@@ -84,8 +119,17 @@ fn main() {
     db::init(&mut con);
     rouille::start_server("0.0.0.0:3000", move |request| {
         router!(request,
+            (POST) (/rpc/reg) => {
+                rpc__reg(&&request)
+            },
             (POST) (/rpc/login) => {
                 rpc__login(&&request)
+            },
+            (POST) (/rpc/logout) => {
+                rpc__logout(&&request)
+            },
+            (POST) (/rpc/current) => {
+                rpc__current(&&request)
             },
             _ => rouille::Response::empty_404()
         )
