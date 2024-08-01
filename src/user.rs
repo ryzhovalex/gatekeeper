@@ -18,8 +18,12 @@ pub struct UserChange {
     pub id: u32,
     pub user_sid: String,
     pub action: String,
-    /// Domains that haven't been notified with this change yet.
-    pub pending_domains: Vec<String>
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Domain {
+    pub key: String,
+    pub pending_user_changes: Vec<UserChange>
 }
 
 pub fn create(data: &Reg) -> Res<User> {
@@ -38,6 +42,6 @@ pub fn get_all_sids() -> Res<Vec<User>> {
     todo!()
 }
 
-pub fn get_changes() -> Res<Vec<UserChange>> {
+pub fn get_domain_user_changes() -> Res<Vec<UserChange>> {
     todo!()
 }

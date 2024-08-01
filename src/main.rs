@@ -118,7 +118,7 @@ fn rpc__get_all_user_sids(req: &&Request) -> Response {
 }
 
 #[allow(non_snake_case)]
-fn rpc__get_user_changes(req: &&Request) -> Response {
+fn rpc__get_domain_user_changes(req: &&Request) -> Response {
     todo!();
 }
 
@@ -149,8 +149,8 @@ fn main() {
             (POST) (/rpc/access) => {
                 rpc__access(&&request)
             },
-            (POST) (/rpc/server/user/change/get_many) => {
-                rpc__get_user_changes(&&request)
+            (POST) (/rpc/server/domain/get_user_changes) => {
+                rpc__get_domain_user_changes(&&request)
             },
             (POST) (/rpc/server/user/get_all_sids) => {
                 rpc__get_all_user_sids(&&request)
