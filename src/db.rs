@@ -1,4 +1,5 @@
 use crate::{res::Res, Apprc, SqlCfg};
+use log::{info, warn};
 use postgres::{Client, NoTls};
 
 pub fn con(cfg: &SqlCfg) -> Res<Client> {
@@ -15,6 +16,7 @@ pub fn con(cfg: &SqlCfg) -> Res<Client> {
 }
 
 pub fn drop_db(apprc: &Apprc) {
+    warn!("drop db");
     let mut con = con(&SqlCfg {
         host: apprc.sql.host.to_owned(),
         port: apprc.sql.port.to_owned(),
@@ -23,14 +25,23 @@ pub fn drop_db(apprc: &Apprc) {
         password: "postgres".to_string(),
     })
     .unwrap();
-    con.execute(
-        "DROP DATABASE IF EXISTS $1 WITH FORCE",
-        &[&apprc.sql.dbname],
+    con.batch_execute(
+        format!("DROP DATABASE IF EXISTS {} WITH (FORCE)", &apprc.sql.dbname)
+            .as_str(),
+    )
+    .unwrap();
+    con.batch_execute(
+        format!(
+            "CREATE DATABASE {} WITH OWNER {}",
+            &apprc.sql.dbname, &apprc.sql.user
+        )
+        .as_str(),
     )
     .unwrap();
 }
 
 pub fn init(apprc: &Apprc) {
+    info!("init db");
     let mut con = con(&apprc.sql).unwrap();
     con.batch_execute(
         "
@@ -38,10 +49,10 @@ pub fn init(apprc: &Apprc) {
             id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             hpassword TEXT NOT NULL,
-            firstname TEXT NULLABLE,
-            patronym TEXT NULLABLE,
-            surname TEXT NULLABLE,
-            rt TEXT NULLABLE
+            firstname TEXT,
+            patronym TEXT,
+            surname TEXT,
+            rt TEXT
         );
         CREATE TABLE domain (
             id SERIAL PRIMARY KEY,
@@ -59,5 +70,5 @@ pub fn init(apprc: &Apprc) {
         );
     ",
     )
-    .unwrap_or(());
+    .unwrap();
 }

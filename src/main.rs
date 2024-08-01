@@ -6,7 +6,7 @@ use log::{debug, error, info, warn};
 use password::check_password;
 use rouille::{Request, Response};
 use serde::Deserialize;
-use token::create_at;
+use token::{create_at, verify_rt};
 use user::{get_by_rt, set_rt_for_username};
 
 #[macro_use]
@@ -148,14 +148,9 @@ fn rpc__access(req: &&Request, apprc: &Apprc) -> Response {
         );
         return Response::json(&err);
     };
-    let Ok((user, _)) = get_by_rt(&rt_signature.rt, &apprc) else {
-        return Response::json(&err::Err::new(
-            "val_err".to_string(),
-            format!("unknown refresh token"),
-        ));
-    };
+    let claims = verify_rt(rt_signature.rt).unwrap();
     // we don't store access tokens since they intended to be short-lived
-    Response::text(create_at(user.id).unwrap())
+    Response::text(create_at(claims.user_id).unwrap())
 }
 
 #[allow(non_snake_case)]
@@ -178,11 +173,11 @@ fn main() {
     let apprc: Apprc = serde_yml::from_str(&content).unwrap();
 
     let args: Vec<String> = env::args().collect();
-    if args.len() > 1 && args[1] == "-d" {
-        drop_db(&apprc);
+    if args.contains(&"-d".to_string()) {
+        db::drop_db(&apprc);
+        db::init(&apprc);
     }
 
-    db::init(&apprc);
     info!("start server");
     rouille::start_server("0.0.0.0:3000", move |request| {
         router!(request,

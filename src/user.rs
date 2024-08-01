@@ -89,7 +89,7 @@ pub fn get_by_rt(rt: &String, apprc: &Apprc) -> Res<(User, String)> {
 pub fn del_rt(rt: &String, apprc: &Apprc) -> Res<()> {
     let mut con = db::con(&apprc.sql).unwrap();
 
-    con.query_one("UPDATE appuser SET rt = NULL WHERE rt = $1", &[&rt])
+    con.execute("UPDATE appuser SET rt = NULL WHERE rt = $1", &[&rt])
         .unwrap();
 
     Ok(())
@@ -102,8 +102,11 @@ pub fn set_rt_for_username(
 ) -> Res<()> {
     let mut con = db::con(&apprc.sql).unwrap();
 
-    con.query_one("UPDATE appuser SET rt = $1 WHERE username = $2", &[&rt, &username])
-        .unwrap();
+    con.execute(
+        "UPDATE appuser SET rt = $1 WHERE username = $2",
+        &[&rt, &username],
+    )
+    .unwrap();
 
     Ok(())
 }
