@@ -5,7 +5,7 @@ use argon2::{
 
 use crate::res::Res;
 
-pub fn hash_password(password: String) -> Res<String> {
+pub fn hash_password(password: &String) -> Res<String> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     Ok(argon2
@@ -14,7 +14,7 @@ pub fn hash_password(password: String) -> Res<String> {
         .to_string())
 }
 
-pub fn check_password(password: String, password_hash: String) -> bool {
+pub fn check_password(password: &String, password_hash: &String) -> bool {
     let parsed_hash = PasswordHash::new(&password_hash).unwrap();
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)

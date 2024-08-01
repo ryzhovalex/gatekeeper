@@ -8,6 +8,9 @@ pub struct Err {
 
 impl Err {
     pub fn new(errcode: String, msg: String) -> Self {
-        Self { errcode: errcode, msg: msg }
+        Self {
+            errcode: errcode,
+            msg: msg,
+        }
     }
 }
