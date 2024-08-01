@@ -20,7 +20,7 @@ pub fn init(con: &mut Client) {
         CREATE TABLE user (
             id SERIAL PRIMARY KEY,
             username TEXT NOT NULL,
-            password_hash TEXT NOT NULL
+            hpassword TEXT NOT NULL
         )
     ",
     )

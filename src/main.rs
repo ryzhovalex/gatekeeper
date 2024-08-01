@@ -1,7 +1,12 @@
 use core::panic;
 use std::{fs::File, io::Read};
 
+use hmac::{Hmac, Mac};
+use jwt::SignWithKey;
+use res::Res;
+use rouille::{Request, Response};
 use serde::{Deserialize, Serialize};
+use user::set_rt_for_username;
 
 #[macro_use]
 extern crate rouille;
@@ -10,6 +15,9 @@ mod err;
 mod password;
 mod path;
 mod res;
+mod token;
+mod user;
+mod common;
 
 #[derive(Debug, Deserialize)]
 struct Apprc {
@@ -43,6 +51,27 @@ struct Login {
     password: String,
 }
 
+/// Logins user into the system.
+///
+/// All other login sessions are discarded (only 1 refresh token is possible
+/// by default).
+///
+/// Returns refresh token.
+#[allow(non_snake_case)]
+fn rpc__login(req: &&Request) -> Response {
+    let login: Login = try_or_400!(
+        rouille::input::json_input(req));
+    let Ok(user) = user::get_by_username(&login.username) else {
+        let err = err::Err::new(
+            "val_err".to_string(),
+            format!("invalid username {}", login.username.to_owned()));
+        return Response::json(&err);
+    };
+    let rt = token::create_rt(user.sid).unwrap();
+    set_rt_for_username(&login.username, &rt).unwrap();
+    Response::text(rt)
+}
+
 fn main() {
     colog::init();
 
@@ -52,12 +81,11 @@ fn main() {
 
     let apprc: Apprc = serde_yml::from_str(&content).unwrap();
     let mut con = db::con(apprc.sql).unwrap();
+    db::init(&mut con);
     rouille::start_server("0.0.0.0:3000", move |request| {
         router!(request,
             (POST) (/rpc/login) => {
-                let json: Login = try_or_400!(
-                    rouille::input::json_input(request));
-                rouille::Response::empty_204()
+                rpc__login(&&request)
             },
             _ => rouille::Response::empty_404()
         )
