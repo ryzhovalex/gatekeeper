@@ -107,6 +107,21 @@ fn rpc__current(req: &&Request) -> Response {
     todo!();
 }
 
+#[allow(non_snake_case)]
+fn rpc__access(req: &&Request) -> Response {
+    todo!();
+}
+
+#[allow(non_snake_case)]
+fn rpc__get_all_user_sids(req: &&Request) -> Response {
+    todo!();
+}
+
+#[allow(non_snake_case)]
+fn rpc__get_user_changes(req: &&Request) -> Response {
+    todo!();
+}
+
 fn main() {
     colog::init();
 
@@ -130,6 +145,15 @@ fn main() {
             },
             (POST) (/rpc/current) => {
                 rpc__current(&&request)
+            },
+            (POST) (/rpc/access) => {
+                rpc__access(&&request)
+            },
+            (POST) (/rpc/server/user/change/get_many) => {
+                rpc__get_user_changes(&&request)
+            },
+            (POST) (/rpc/server/user/get_all_sids) => {
+                rpc__get_all_user_sids(&&request)
             },
             _ => rouille::Response::empty_404()
         )

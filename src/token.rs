@@ -9,6 +9,7 @@ struct RtClaims {
     user_sid: String
 }
 
+// TODO: add exp
 pub fn create_rt(user_sid: String) -> Res<String> {
     let secret: Hmac<Sha256> = Hmac::new_from_slice(b"weloveauth").unwrap();
     let user_sid = "tmp".to_string();
