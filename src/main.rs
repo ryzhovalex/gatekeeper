@@ -1,5 +1,6 @@
 use std::{env, fs::File, io::Read};
 
+use db::drop_db;
 use hmac::{Hmac, Mac};
 use log::{debug, error, info, warn};
 use password::check_password;
@@ -170,14 +171,17 @@ fn rpc__get_domain_user_changes(req: &&Request, apprc: &Apprc) -> Response {
 fn main() {
     colog::init();
 
-    let args: Vec<String> = env::args().collect();
-    dbg!(args);
-
     let mut file = File::open(path::cwd().unwrap().join("apprc.yml")).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
 
     let apprc: Apprc = serde_yml::from_str(&content).unwrap();
+
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 && args[1] == "-d" {
+        drop_db(&apprc);
+    }
+
     db::init(&apprc);
     info!("start server");
     rouille::start_server("0.0.0.0:3000", move |request| {

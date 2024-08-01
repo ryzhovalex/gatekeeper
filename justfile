@@ -1,7 +1,7 @@
 set shell := ["nu", "-c"]
 
-run:
-	@cargo run -q
+run *flags="":
+	@cargo run -q -- {{flags}}
 
 lint:
 	@cargo fmt
