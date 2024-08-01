@@ -14,6 +14,22 @@ pub fn con(cfg: &SqlCfg) -> Res<Client> {
     Ok(db)
 }
 
+pub fn drop_db(apprc: &Apprc) {
+    let mut con = con(&SqlCfg {
+        host: apprc.sql.host.to_owned(),
+        port: apprc.sql.port.to_owned(),
+        dbname: "postgres".to_string(),
+        user: "postgres".to_string(),
+        password: "postgres".to_string(),
+    })
+    .unwrap();
+    con.execute(
+        "DROP DATABASE IF EXISTS $1 WITH FORCE",
+        &[&apprc.sql.dbname],
+    )
+    .unwrap();
+}
+
 pub fn init(apprc: &Apprc) {
     let mut con = con(&apprc.sql).unwrap();
     con.batch_execute(
@@ -22,9 +38,10 @@ pub fn init(apprc: &Apprc) {
             id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             hpassword TEXT NOT NULL,
-            firstname TEXT,
-            patronym TEXT,
-            surname TEXT
+            firstname TEXT NULLABLE,
+            patronym TEXT NULLABLE,
+            surname TEXT NULLABLE,
+            rt TEXT NULLABLE
         );
         CREATE TABLE domain (
             id SERIAL PRIMARY KEY,
@@ -42,6 +59,5 @@ pub fn init(apprc: &Apprc) {
         );
     ",
     )
-    .unwrap();
-    con.close().unwrap();
+    .unwrap_or(());
 }

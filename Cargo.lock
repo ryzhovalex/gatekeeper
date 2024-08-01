@@ -513,6 +513,7 @@ dependencies = [
  "colog",
  "hmac",
  "jwt",
+ "log",
  "postgres",
  "rouille",
  "serde",

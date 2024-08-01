@@ -14,8 +14,8 @@ pub fn hash_password(password: &String) -> Res<String> {
         .to_string())
 }
 
-pub fn check_password(password: &String, password_hash: &String) -> bool {
-    let parsed_hash = PasswordHash::new(&password_hash).unwrap();
+pub fn check_password(password: &String, hpassword: &String) -> bool {
+    let parsed_hash = PasswordHash::new(&hpassword).unwrap();
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
         .is_ok()
