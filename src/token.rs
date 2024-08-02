@@ -1,4 +1,7 @@
-use crate::{res::Res, time::delta};
+use crate::err::ErrData;
+use crate::rskit::time;
+use crate::Apprc;
+use crate::{rskit::res::Res, rskit::time::delta};
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
 use jwt::VerifyWithKey;
@@ -8,11 +11,11 @@ use sha2::Sha256;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RtClaims {
-    pub user_id: u32,
+    pub user_id: i32,
     pub exp: f64,
 }
 
-pub fn create_rt(user_id: u32) -> Res<String> {
+pub fn create_rt(user_id: i32) -> Res<String> {
     let secret: Hmac<Sha256> = Hmac::new_from_slice(b"weloveauth").unwrap();
     let claims = RtClaims {
         user_id: user_id,
@@ -22,7 +25,7 @@ pub fn create_rt(user_id: u32) -> Res<String> {
     Ok(claims.sign_with_key(&secret).unwrap())
 }
 
-pub fn create_at(user_id: u32) -> Res<String> {
+pub fn create_at(user_id: i32) -> Res<String> {
     let secret: Hmac<Sha256> = Hmac::new_from_slice(b"helloworld").unwrap();
     let claims = RtClaims {
         user_id: user_id,
@@ -32,8 +35,11 @@ pub fn create_at(user_id: u32) -> Res<String> {
     Ok(claims.sign_with_key(&secret).unwrap())
 }
 
-pub fn verify_rt(rt: String) -> Res<RtClaims> {
+pub fn verify_rt(rt: &String) -> Res<RtClaims> {
     let secret: Hmac<Sha256> = Hmac::new_from_slice(b"weloveauth").unwrap();
     let claims: RtClaims = rt.verify_with_key(&secret).unwrap();
+    if claims.exp < time::utc() {
+        return Err(ErrData::new("val_err", "expired refresh token"));
+    }
     Ok(claims)
 }

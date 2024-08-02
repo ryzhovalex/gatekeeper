@@ -4,3 +4,11 @@ sql:
   dbname: gatekeeper_test
   user: ryzhovalex
   password: pass
+domain:
+  domains:
+    -
+      key: test
+      secret: hello
+    -
+      key: test2
+      secret: hello2

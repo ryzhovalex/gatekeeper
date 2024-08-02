@@ -1,4 +1,4 @@
-use crate::{res::Res, Apprc, SqlCfg};
+use crate::{rskit::res::Res, Apprc, SqlCfg};
 use log::{info, warn};
 use postgres::{Client, NoTls};
 
@@ -56,12 +56,12 @@ pub fn init(apprc: &Apprc) {
         );
         CREATE TABLE domain (
             id SERIAL PRIMARY KEY,
-            key TEXT NOT NULL
+            key TEXT NOT NULL UNIQUE,
+            secret TEXT NOT NULL
         );
         CREATE TABLE user_change (
             id SERIAL PRIMARY KEY,
             user_id SERIAL REFERENCES appuser(id),
-            domain_id SERIAL REFERENCES domain(id),
             action VARCHAR(256) NOT NULL
         );
         CREATE TABLE domain_to_user_change (

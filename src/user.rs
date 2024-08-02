@@ -1,11 +1,23 @@
+use std::{any::Any, collections::HashMap};
+
 use postgres::{Client, Row};
 use serde::{Deserialize, Serialize};
+use serde_json;
 
-use crate::{db, err::Err, password::hash_password, res::Res, Apprc, Reg};
+use crate::{
+    db,
+    password::hash_password,
+    rskit::{
+        err::{err, ErrData},
+        query::Query,
+        res::Res,
+    },
+    Apprc, Reg,
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct User {
-    pub id: u32,
+    pub id: i32,
     pub username: String,
     pub firstname: Option<String>,
     pub patronym: Option<String>,
@@ -15,14 +27,8 @@ pub struct User {
 
 #[derive(Serialize, Deserialize)]
 pub struct UserChange {
-    pub id: u32,
+    pub id: i32,
     pub action: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Domain {
-    pub key: String,
-    pub pending_user_changes: Vec<UserChange>,
 }
 
 pub fn create(data: &Reg, apprc: &Apprc) -> Res<User> {
@@ -52,9 +58,36 @@ pub fn create(data: &Reg, apprc: &Apprc) -> Res<User> {
     parse_row(&row)
 }
 
+pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
+    let mut con = db::con(&apprc.sql).unwrap();
+
+    let id = searchq.get("id");
+    let username = searchq.get("username");
+    let wh = if id.is_some() && username.is_some() {
+        format!("id = {} AND username = {}", id.unwrap(), username.unwrap())
+    } else if id.is_some() {
+        format!("id = {}", id.unwrap())
+    } else if username.is_some() {
+        format!("username = {}", username.unwrap())
+    } else {
+        String::new()
+    };
+
+    if wh.is_empty() {
+        return err(
+            "val_err",
+            format!("failed to process searchq {:?}", searchq),
+        );
+    }
+
+    con.execute("DELETE FROM appuser WHERE $1", &[&wh]).unwrap();
+
+    Ok(())
+}
+
 fn parse_row(row: &Row) -> Res<User> {
     Ok(User {
-        id: row.get::<_, i32>("id") as u32,
+        id: row.get("id"),
         username: row.get("username"),
         firstname: row.get("firstname"),
         patronym: row.get("patronym"),
@@ -63,7 +96,17 @@ fn parse_row(row: &Row) -> Res<User> {
     })
 }
 
-pub fn get_by_username(
+pub fn get_by_id(id: i32, apprc: &Apprc) -> Res<User> {
+    let mut con = db::con(&apprc.sql).unwrap();
+
+    let row = con
+        .query_one("SELECT * FROM appuser WHERE id = $1", &[&id])
+        .unwrap();
+
+    Ok(parse_row(&row).unwrap())
+}
+
+pub fn get_by_username_with_hpassword(
     username: &String,
     apprc: &Apprc,
 ) -> Res<(User, String)> {
