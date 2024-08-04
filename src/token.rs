@@ -14,13 +14,13 @@ pub struct UserTokenPayload {
     pub exp: f64,
 }
 
-impl Expirable for UserTokenPayload {
+impl Expire for UserTokenPayload {
     fn get_exp(&self) -> Res<f64> {
         Ok(*&self.exp)
     }
 }
 
-pub trait Expirable {
+pub trait Expire {
     fn get_exp(&self) -> Res<f64>;
 
     fn check_exp(&self) -> Res<f64> {
@@ -33,7 +33,7 @@ pub trait Expirable {
 }
 
 pub fn create_token(
-    payload: &(impl ToBase64 + Expirable + Serialize),
+    payload: &(impl ToBase64 + Expire + Serialize),
     secret: &[u8],
 ) -> Res<String> {
     let encoded_secret: Hmac<Sha256> =
@@ -44,7 +44,7 @@ pub fn create_token(
 pub fn verify_token<T>(
     token: &String,
     secret: &[u8],
-) -> Res<T> where T: ToBase64 + Expirable + for<'a> Deserialize<'a> {
+) -> Res<T> where T: ToBase64 + Expire + for<'a> Deserialize<'a> {
     let encoded_secret: Hmac<Sha256> =
         Hmac::new_from_slice(secret).unwrap();
     let payload: T = token.verify_with_key(&encoded_secret).unwrap();
