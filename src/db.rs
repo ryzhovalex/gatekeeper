@@ -56,8 +56,7 @@ pub fn init(apprc: &Apprc) {
         );
         CREATE TABLE domain (
             id SERIAL PRIMARY KEY,
-            key TEXT NOT NULL UNIQUE,
-            secret TEXT NOT NULL
+            key TEXT NOT NULL UNIQUE
         );
         CREATE TABLE user_change (
             id SERIAL PRIMARY KEY,

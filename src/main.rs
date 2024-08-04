@@ -7,7 +7,8 @@ use rouille::{Request, Response, ResponseBody};
 use rskit::{
     err::{self, ErrData},
     path,
-    query::Query, res::Res,
+    query::Query,
+    res::Res,
 };
 use serde::Deserialize;
 use token::{create_at, verify_rt};
@@ -257,12 +258,24 @@ fn main() {
                 rpc__reg(&&request, &apprc)
             },
             (POST) (/rpc/server/dereg) => {
+                match verify_domain_secret_from_header(&&request, &apprc) {
+                    Err(e) => return response_err(&e),
+                    Ok(_) => ()
+                }
                 rpc__dereg(&&request, &apprc)
             },
             (POST) (/rpc/server/get_user_changes_for_domain) => {
+                match verify_domain_secret_from_header(&&request, &apprc) {
+                    Err(e) => return response_err(&e),
+                    Ok(_) => ()
+                }
                 rpc__get_user_changes_for_domain(&&request, &apprc)
             },
             (POST) (/rpc/server/get_all_user_sids) => {
+                match verify_domain_secret_from_header(&&request, &apprc) {
+                    Err(e) => return response_err(&e),
+                    Ok(_) => ()
+                }
                 rpc__get_all_user_sids(&&request, &apprc)
             },
             _ => {
