@@ -23,6 +23,7 @@ mod password;
 mod rskit;
 mod token;
 mod user;
+mod user_change;
 
 #[derive(Debug, Deserialize)]
 struct Apprc {
@@ -111,8 +112,8 @@ fn rpc__dereg(req: &&Request, apprc: &Apprc) -> Response {
             format!("invalid searchq data"),
         ));
     };
-    let user = user::del(&searchq, &apprc).unwrap();
-    Response::json(&user)
+    user::del(&searchq, &apprc).unwrap();
+    Response::empty_204()
 }
 
 /// Logins an user into the system.

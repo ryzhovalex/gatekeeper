@@ -1,4 +1,8 @@
-use std::{any::Any, collections::HashMap};
+use std::{
+    any::Any,
+    collections::HashMap,
+    fmt::{Debug, Display},
+};
 
 use postgres::{Client, Row};
 use serde::{Deserialize, Serialize};
@@ -23,12 +27,6 @@ pub struct User {
     pub patronym: Option<String>,
     pub surname: Option<String>,
     pub rt: Option<String>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct UserChange {
-    pub id: i32,
-    pub action: String,
 }
 
 pub fn create(data: &Reg, apprc: &Apprc) -> Res<User> {
@@ -63,24 +61,30 @@ pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
 
     let id = searchq.get("id");
     let username = searchq.get("username");
-    let wh = if id.is_some() && username.is_some() {
-        format!("id = {} AND username = {}", id.unwrap(), username.unwrap())
+    let where_ = if id.is_some() && username.is_some() {
+        format!(
+            "id = {} AND username = '{}'",
+            id.unwrap(),
+            username.unwrap().as_str().unwrap()
+        )
     } else if id.is_some() {
         format!("id = {}", id.unwrap())
     } else if username.is_some() {
-        format!("username = {}", username.unwrap())
+        format!("username = '{}'", username.unwrap().as_str().unwrap())
     } else {
         String::new()
     };
 
-    if wh.is_empty() {
+    if where_.is_empty() {
         return err(
             "val_err",
             format!("failed to process searchq {:?}", searchq),
         );
     }
 
-    con.execute("DELETE FROM appuser WHERE $1", &[&wh]).unwrap();
+    let stmt = format!("DELETE FROM appuser WHERE {}", &where_);
+    dbg!(&stmt);
+    con.batch_execute(stmt.as_str()).unwrap();
 
     Ok(())
 }
@@ -157,9 +161,3 @@ pub fn set_rt_for_username(
 pub fn get_all_sids(apprc: &Apprc) -> Res<Vec<User>> {
     todo!()
 }
-
-pub fn get_domain_user_changes(apprc: &Apprc) -> Res<Vec<UserChange>> {
-    todo!()
-}
-
-pub fn parse_user_change_row(row: &Row) {}

@@ -36,7 +36,6 @@ impl Default for Domain {
 }
 
 pub fn parse_row(row: &Row) -> Res<Domain> {
-    dbg!(row);
     Ok(Domain {
         id: row.get("id"),
         key: row.get("key"),
