@@ -2,6 +2,9 @@ use crate::{rskit::res::Res, Apprc, SqlCfg};
 use log::{info, warn};
 use postgres::{Client, NoTls};
 
+pub type Id = i32;
+pub type Sid = String;
+
 pub fn con(cfg: &SqlCfg) -> Res<Client> {
     let db = Client::connect(
         format!(
