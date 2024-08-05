@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     db,
     rskit::{err, res::Res},
+    token::{self, Expire},
     user::UserChange,
     Apprc,
 };
@@ -16,38 +17,59 @@ pub struct DomainCfg {
 #[derive(Debug, Deserialize)]
 pub struct DomainCfgUnit {
     pub key: String,
-    pub secret: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Domain {
+    pub id: i32,
     pub key: String,
-    pub secret: String,
-    pub pending_user_changes: Vec<UserChange>,
+    pub pending_user_changes: Option<Vec<UserChange>>,
 }
 
-// pub fn parse_row(row: &Row) -> Res<Domain> {
-//     Ok(Domain {
-//         key: row.get("key"),
-//         secret: row.get("secret"),
-//         pending_user_changes: row.get
-//     })
-// }
+impl Default for Domain {
+    fn default() -> Self {
+        Self {
+            id: -1,
+            key: String::new(),
+            pending_user_changes: None,
+        }
+    }
+}
 
-// pub fn get_domain_by_secret(secret: &String, apprc: &Apprc) -> Res<Domain> {
-//     let mut con = db::con(&apprc.sql).unwrap();
-//     let row = con.query_one("SELECT * from domain WHERE secret = $1", &[&secret]).unwrap()
-//     parse_row(&row)
-// }
+#[derive(Serialize, Deserialize)]
+pub struct DomainTokenPayload {
+    domain_id: i32,
+    exp: f64,
+}
 
-pub fn verify_secret(secret: &String, apprc: &Apprc) -> Res<()> {
+impl Expire for DomainTokenPayload {
+    fn get_exp(&self) -> Res<f64> {
+        Ok(*&self.exp)
+    }
+}
+
+pub fn parse_row(row: &Row) -> Res<Domain> {
+    dbg!(row);
+    Ok(Domain {
+        id: row.get("id"),
+        key: row.get("key"),
+        ..Default::default()
+    })
+}
+
+pub fn verify_secret(secret: &String, apprc: &Apprc) -> Res<Domain> {
     let mut con = db::con(&apprc.sql).unwrap();
     let row = con
-        .query_one("SELECT * from domain WHERE secret = $1", &[&secret])
+        .query_one("SELECT * FROM domain WHERE secret = $1", &[&secret])
         .unwrap();
-    let real_secret: String = row.get("secret");
-    match real_secret == *secret {
-        true => Ok(()),
-        false => err::err("val_err", "can't verify domain's secret"),
+    parse_row(&row)
+}
+
+pub fn init(apprc: &Apprc) -> Res<()> {
+    let mut con = db::con(&apprc.sql).unwrap();
+    // create non-existent domains
+    for domain in &apprc.domain.domains {
+        let _ = con.execute("INSERT INTO domain VALUES ($1)", &[&domain.key]);
     }
+    Ok(())
 }

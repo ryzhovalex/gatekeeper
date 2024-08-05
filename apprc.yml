@@ -7,8 +7,8 @@ sql:
 domain:
   domains:
     -
-      key: test
+      key: test_1
       secret: hello
     -
-      key: test2
-      secret: hello2
+      key: test_2
+      secret: world

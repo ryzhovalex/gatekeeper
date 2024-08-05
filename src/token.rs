@@ -41,12 +41,11 @@ pub fn create_token(
     Ok(payload.sign_with_key(&encoded_secret).unwrap())
 }
 
-pub fn verify_token<T>(
-    token: &String,
-    secret: &[u8],
-) -> Res<T> where T: ToBase64 + Expire + for<'a> Deserialize<'a> {
-    let encoded_secret: Hmac<Sha256> =
-        Hmac::new_from_slice(secret).unwrap();
+pub fn verify_token<T>(token: &String, secret: &[u8]) -> Res<T>
+where
+    T: ToBase64 + Expire + for<'a> Deserialize<'a>,
+{
+    let encoded_secret: Hmac<Sha256> = Hmac::new_from_slice(secret).unwrap();
     let payload: T = token.verify_with_key(&encoded_secret).unwrap();
     payload.check_exp()?;
     Ok(payload)

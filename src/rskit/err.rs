@@ -15,10 +15,10 @@ impl ErrData {
     }
 }
 
-pub fn err(
+pub fn err<T>(
     errcode: impl Into<String>,
     msg: impl Into<String>,
-) -> Result<(), ErrData> {
+) -> Result<T, ErrData> {
     Err(ErrData {
         errcode: errcode.into(),
         msg: msg.into(),

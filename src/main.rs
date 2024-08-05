@@ -1,5 +1,6 @@
 use std::{env, fs::File, io::Read};
 
+use domain::{Domain, DomainCfg};
 use hmac::{Hmac, Mac};
 use log::{debug, error, info, warn};
 use password::check_password;
@@ -26,6 +27,7 @@ mod user;
 #[derive(Debug, Deserialize)]
 struct Apprc {
     sql: SqlCfg,
+    domain: DomainCfg,
 }
 
 #[derive(Debug, Deserialize)]
@@ -206,12 +208,13 @@ fn rpc__get_all_user_sids(req: &&Request, apprc: &Apprc) -> Response {
 #[allow(non_snake_case)]
 fn rpc__get_user_changes_for_domain(
     req: &&Request,
+    domain: &Domain,
     apprc: &Apprc,
 ) -> Response {
     todo!();
 }
 
-fn verify_domain_secret_from_header(req: &&Request, apprc: &Apprc) -> Res<()> {
+fn verify_domain_secret_from_header(req: &&Request, apprc: &Apprc) -> Res<domain::Domain> {
     let Some(secret) = req.header("secret") else {
         return err::err("val_err", "can't get secret from header");
     };
@@ -232,6 +235,8 @@ fn main() {
         db::drop_db(&apprc);
         db::init(&apprc);
     }
+
+    domain::init(&apprc).unwrap();
 
     info!("start server");
     rouille::start_server("0.0.0.0:3000", move |request| {
@@ -265,11 +270,11 @@ fn main() {
                 rpc__dereg(&&request, &apprc)
             },
             (POST) (/rpc/server/get_user_changes_for_domain) => {
-                match verify_domain_secret_from_header(&&request, &apprc) {
+                let domain = match verify_domain_secret_from_header(&&request, &apprc) {
                     Err(e) => return response_err(&e),
-                    Ok(_) => ()
-                }
-                rpc__get_user_changes_for_domain(&&request, &apprc)
+                    Ok(d) => d
+                };
+                rpc__get_user_changes_for_domain(&&request, &domain, &apprc)
             },
             (POST) (/rpc/server/get_all_user_sids) => {
                 match verify_domain_secret_from_header(&&request, &apprc) {
