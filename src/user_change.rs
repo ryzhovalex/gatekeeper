@@ -1,7 +1,11 @@
 use postgres::Row;
 use serde::{Deserialize, Serialize};
 
-use crate::{db::{self, Id}, rskit::res::Res, Apprc};
+use crate::{
+    db::{self, Id},
+    rskit::res::Res,
+    Apprc,
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct UserChange {
@@ -28,8 +32,8 @@ pub fn parse_row(row: &Row) -> Res<UserChange> {
 /// * `domain_key` - Key of the domain for which to fetch changes.
 /// * `unlink` - Whether to unlink changes for the requested domain.
 ///              Defaults to `true`.
-pub fn get_domain_user_changes(
-    domain_key: String,
+pub fn get_user_changes_for_domain(
+    domain_key: &String,
     unlink: Option<bool>,
     apprc: &Apprc,
 ) -> Res<Vec<UserChange>> {
@@ -47,14 +51,26 @@ pub fn get_domain_user_changes(
     let mut user_changes: Vec<UserChange> = Vec::new();
     let mut user_change_ids: Vec<Id> = Vec::new();
     for r in rows {
-        user_changes.push(parse_row(&r).unwrap());
+        let user_change = parse_row(&r).unwrap();
+        let user_change_id = user_change.id;
+        user_changes.push(user_change);
+        user_change_ids.push(user_change_id);
     }
 
     let unlink = match unlink {
         Some(v) => v,
-        None => true
+        None => true,
     };
+
     if unlink {
+        // user changes without links left in the db for the complete
+        // history
+        con.query(
+            "
+            DELETE FROM domain_to_user_change
+            WHERE user_change_id in $1",
+            &[&user_change_ids],
+        ).unwrap();
     }
 
     Ok(user_changes)

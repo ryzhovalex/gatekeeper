@@ -11,9 +11,10 @@ use rskit::{
     query::Query,
     res::Res,
 };
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use token::{create_at, verify_rt};
 use user::{get_by_id, get_by_rt, set_rt_for_username};
+use user_change::{get_user_changes_for_domain, UserChange};
 
 #[macro_use]
 extern crate rouille;
@@ -70,6 +71,11 @@ struct Reg {
     pub firstname: Option<String>,
     pub patronym: Option<String>,
     pub surname: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct GetUserChangesForDomain {
+    unlink: Option<bool>,
 }
 
 pub fn response_err(content: &ErrData) -> Response {
@@ -178,6 +184,19 @@ fn rpc__current(req: &&Request, apprc: &Apprc) -> Response {
     Response::json(&user)
 }
 
+fn parse<T>(req: &&Request) -> Res<T>
+where
+    T: DeserializeOwned,
+{
+    match rouille::input::json_input::<T>(req) {
+        Err(e) => Err(err::ErrData::new(
+            "val_err".to_string(),
+            format!("invalid req body"),
+        )),
+        Ok(v) => Ok(v),
+    }
+}
+
 #[allow(non_snake_case)]
 fn rpc__access(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(rt_signature) = rouille::input::json_input::<RtSignature>(req)
@@ -211,8 +230,9 @@ fn rpc__get_user_changes_for_domain(
     req: &&Request,
     domain: &Domain,
     apprc: &Apprc,
-) -> Response {
-    todo!();
+) -> Res<Vec<UserChange>> {
+    let body = parse::<GetUserChangesForDomain>(req)?;
+    get_user_changes_for_domain(&domain.key, body.unlink, apprc)
 }
 
 fn verify_domain_secret_from_header(
@@ -278,7 +298,10 @@ fn main() {
                     Err(e) => return response_err(&e),
                     Ok(d) => d
                 };
-                rpc__get_user_changes_for_domain(&&request, &domain, &apprc)
+                match rpc__get_user_changes_for_domain(&&request, &domain, &apprc) {
+                    Err(e) => response_err(&e),
+                    Ok(v) => Response::json(&v)
+                }
             },
             (POST) (/rpc/server/get_all_user_sids) => {
                 match verify_domain_secret_from_header(&&request, &apprc) {
