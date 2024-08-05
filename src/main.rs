@@ -214,8 +214,11 @@ fn rpc__get_user_changes_for_domain(
     todo!();
 }
 
-fn verify_domain_secret_from_header(req: &&Request, apprc: &Apprc) -> Res<domain::Domain> {
-    let Some(secret) = req.header("secret") else {
+fn verify_domain_secret_from_header(
+    req: &&Request,
+    apprc: &Apprc,
+) -> Res<domain::Domain> {
+    let Some(secret) = req.header("domain_secret") else {
         return err::err("val_err", "can't get secret from header");
     };
     domain::verify_secret(&secret.to_string(), &apprc)

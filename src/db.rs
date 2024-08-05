@@ -45,7 +45,7 @@ pub fn init(apprc: &Apprc) {
     let mut con = con(&apprc.sql).unwrap();
     con.batch_execute(
         "
-        CREATE TABLE appuser (
+        CREATE TABLE IF NOT EXISTS appuser (
             id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             hpassword TEXT NOT NULL,
@@ -54,17 +54,17 @@ pub fn init(apprc: &Apprc) {
             surname TEXT,
             rt TEXT
         );
-        CREATE TABLE domain (
+        CREATE TABLE IF NOT EXISTS domain (
             id SERIAL PRIMARY KEY,
             key TEXT NOT NULL UNIQUE,
             secret TEXT NOT NULL
         );
-        CREATE TABLE user_change (
+        CREATE TABLE IF NOT EXISTS user_change (
             id SERIAL PRIMARY KEY,
             user_id SERIAL REFERENCES appuser(id),
             action VARCHAR(256) NOT NULL
         );
-        CREATE TABLE domain_to_user_change (
+        CREATE TABLE IF NOT EXISTS domain_to_user_change (
             domain_id SERIAL REFERENCES domain(id) ON UPDATE CASCADE,
             user_change_id SERIAL REFERENCES user_change(id) ON UPDATE CASCADE
         );

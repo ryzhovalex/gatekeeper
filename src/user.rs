@@ -161,3 +161,5 @@ pub fn get_all_sids(apprc: &Apprc) -> Res<Vec<User>> {
 pub fn get_domain_user_changes(apprc: &Apprc) -> Res<Vec<UserChange>> {
     todo!()
 }
+
+pub fn parse_user_change_row(row: &Row) {}
