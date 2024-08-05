@@ -70,7 +70,8 @@ pub fn get_user_changes_for_domain(
             DELETE FROM domain_to_user_change
             WHERE user_change_id in $1",
             &[&user_change_ids],
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     Ok(user_changes)

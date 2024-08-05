@@ -1,5 +1,6 @@
 use std::{env, fs::File, io::Read};
 
+use db::Id;
 use domain::{Domain, DomainCfg};
 use hmac::{Hmac, Mac};
 use log::{debug, error, info, warn};
@@ -13,7 +14,7 @@ use rskit::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use token::{create_at, verify_rt};
-use user::{get_by_id, get_by_rt, set_rt_for_username};
+use user::{get_all_ids, get_by_id, get_by_rt, set_rt_for_username};
 use user_change::{get_user_changes_for_domain, UserChange};
 
 #[macro_use]
@@ -221,8 +222,8 @@ fn rpc__access(req: &&Request, apprc: &Apprc) -> Response {
 }
 
 #[allow(non_snake_case)]
-fn rpc__get_all_user_sids(req: &&Request, apprc: &Apprc) -> Response {
-    todo!();
+fn rpc__get_all_user_ids(req: &&Request, apprc: &Apprc) -> Res<Vec<Id>> {
+    get_all_ids(&apprc)
 }
 
 #[allow(non_snake_case)]
@@ -303,12 +304,16 @@ fn main() {
                     Ok(v) => Response::json(&v)
                 }
             },
-            (POST) (/rpc/server/get_all_user_sids) => {
+            (POST) (/rpc/server/get_all_user_ids) => {
                 match verify_domain_secret_from_header(&&request, &apprc) {
                     Err(e) => return response_err(&e),
                     Ok(_) => ()
                 }
-                rpc__get_all_user_sids(&&request, &apprc)
+
+                match rpc__get_all_user_ids(&&request, &apprc) {
+                    Err(e) => response_err(&e),
+                    Ok(v) => Response::json(&v)
+                }
             },
             _ => {
                 rouille::Response::empty_404()

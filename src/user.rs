@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::{
-    db,
+    db::{self, Id},
     password::hash_password,
     rskit::{
         err::{err, ErrData},
@@ -21,7 +21,7 @@ use crate::{
 
 #[derive(Serialize, Deserialize)]
 pub struct User {
-    pub id: i32,
+    pub id: Id,
     pub username: String,
     pub firstname: Option<String>,
     pub patronym: Option<String>,
@@ -158,6 +158,12 @@ pub fn set_rt_for_username(
     Ok(())
 }
 
-pub fn get_all_sids(apprc: &Apprc) -> Res<Vec<User>> {
-    todo!()
+pub fn get_all_ids(apprc: &Apprc) -> Res<Vec<Id>> {
+    let mut con = db::con(&apprc.sql).unwrap();
+    let rows = con.query("SELECT * FROM appuser", &[]).unwrap();
+    let mut ids: Vec<Id> = Vec::new();
+    for r in rows {
+        ids.push(r.get("id"));
+    }
+    Ok(ids)
 }
