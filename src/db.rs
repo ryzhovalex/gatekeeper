@@ -9,6 +9,7 @@ use log::{info, warn};
 use postgres::{Client, NoTls};
 
 pub type Id = i32;
+#[allow(dead_code)]
 pub type Sid = String;
 
 pub fn convert_psql_err(db_err: postgres::Error) -> ErrData {

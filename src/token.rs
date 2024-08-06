@@ -1,5 +1,6 @@
 use crate::err::ErrData;
-use crate::rskit::time;
+use crate::rskit::err::reserr;
+use crate::rskit::time::{self, utc, Time};
 use crate::{rskit::res::Res, rskit::time::delta};
 use hmac::{Hmac, Mac};
 use jwt::VerifyWithKey;
@@ -11,24 +12,28 @@ use sha2::Sha256;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserTokenPayload {
     pub user_id: i32,
-    pub exp: f64,
+    /// When the token was created.
+    ///
+    /// We store this field instead of `exp` to allow receiver to freely
+    /// interpret using known exp delta.
+    pub created: Time,
 }
 
 impl Expire for UserTokenPayload {
-    fn get_exp(&self) -> Res<f64> {
-        Ok(*&self.exp)
+    fn get_created(&self) -> Res<Time> {
+        Ok(*&self.created)
     }
 }
 
 pub trait Expire {
-    fn get_exp(&self) -> Res<f64>;
+    fn get_created(&self) -> Res<Time>;
 
-    fn check_exp(&self) -> Res<f64> {
-        let exp = *&self.get_exp().unwrap();
-        if exp < time::utc() {
-            return Err(ErrData::new("val_err", "expired token"));
+    fn check_exp(&self, delta: Time) -> Res<Time> {
+        let created = *&self.get_created().unwrap();
+        if created + delta > utc() {
+            return reserr("val_err", "expired token");
         }
-        Ok(exp)
+        Ok(created)
     }
 }
 
@@ -47,15 +52,14 @@ where
 {
     let encoded_secret: Hmac<Sha256> = Hmac::new_from_slice(secret).unwrap();
     let payload: T = token.verify_with_key(&encoded_secret).unwrap();
-    payload.check_exp()?;
+    payload.check_exp(Time::from(60*60*24*360))?;
     Ok(payload)
 }
 
 pub fn create_rt(user_id: i32) -> Res<String> {
     let payload = UserTokenPayload {
         user_id: user_id,
-        // 1 year for now
-        exp: delta((360 * 24 * 60 * 60).into()),
+        created: utc()
     };
     create_token(&payload, b"weloveauth")
 }
@@ -63,8 +67,7 @@ pub fn create_rt(user_id: i32) -> Res<String> {
 pub fn create_at(user_id: i32) -> Res<String> {
     let payload = UserTokenPayload {
         user_id: user_id,
-        // 1 year for now, even for at
-        exp: delta((360 * 24 * 60 * 60).into()),
+        created: utc()
     };
     create_token(&payload, b"helloworld")
 }
