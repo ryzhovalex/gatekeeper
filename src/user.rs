@@ -57,7 +57,7 @@ pub fn create(data: &Reg, apprc: &Apprc) -> Res<User> {
         &CreateUserChange {
             user_id: Some(user.id),
             username: None,
-            action: "del".to_string(),
+            action: "create".to_string(),
         },
         apprc,
     )

@@ -23,6 +23,7 @@ mod db;
 mod domain;
 mod password;
 mod rskit;
+mod sql;
 mod token;
 mod user;
 mod user_change;

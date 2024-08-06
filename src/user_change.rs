@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use postgres::{
     fallible_iterator::{FallibleIterator, Map},
     Client, Row,
@@ -9,13 +11,14 @@ use crate::{
     db::{self, Id},
     domain,
     rskit::{err, res::Res},
-    Apprc,
+    sql, Apprc,
 };
 
 #[derive(Serialize, Deserialize)]
 pub struct UserChange {
     pub id: Id,
     pub action: String,
+    pub user_id: Id,
 }
 
 pub struct CreateUserChange {
@@ -28,6 +31,7 @@ pub fn parse_row(row: &Row) -> Res<UserChange> {
     Ok(UserChange {
         id: row.get("id"),
         action: row.get("action"),
+        user_id: row.get("user_detached_id"),
     })
 }
 
@@ -55,12 +59,11 @@ pub fn get_user_changes_for_domain(
         )
         .unwrap();
     let mut user_changes: Vec<UserChange> = Vec::new();
-    let mut user_change_ids: Vec<Id> = Vec::new();
+    let mut user_change_ids: Vec<String> = Vec::new();
     for r in rows {
         let user_change = parse_row(&r).unwrap();
-        let user_change_id = user_change.id;
+        user_change_ids.push(user_change.id.to_string());
         user_changes.push(user_change);
-        user_change_ids.push(user_change_id);
     }
 
     let unlink = match unlink {
@@ -69,13 +72,17 @@ pub fn get_user_changes_for_domain(
     };
 
     if unlink && !user_change_ids.is_empty() {
-        // user changes without links left in the db for the complete
+        // user changes without links are saved in the db for the complete
         // history
         con.query(
-            "
-            DELETE FROM domain_to_user_change
-            WHERE user_change_id in $1",
-            &[&user_change_ids],
+            &format!(
+                "
+                DELETE FROM domain_to_user_change
+                {}",
+                &sql::build_where_in("user_change_id", &user_change_ids)
+                    .unwrap()
+            ),
+            &[],
         )
         .unwrap();
     }
@@ -92,7 +99,7 @@ pub fn create(data: &CreateUserChange, apprc: &Apprc) -> Res<UserChange> {
     let row = if data.username.is_some() {
         con.query_one(
             "
-                INSERT INTO user_change (user_id, action)
+                INSERT INTO user_change (user_detached_id, action)
                 VALUES ((SELECT id FROM appuser WHERE username = $1), $2)
                 RETURNING *",
             &[&data.username, &data.action],
@@ -102,7 +109,7 @@ pub fn create(data: &CreateUserChange, apprc: &Apprc) -> Res<UserChange> {
         asrt!(data.user_id.is_some());
         con.query_one(
             "
-                INSERT INTO user_change (user_id, action)
+                INSERT INTO user_change (user_detached_id, action)
                 VALUES ($1, $2)
                 RETURNING *",
             &[&data.user_id, &data.action],
@@ -120,20 +127,27 @@ fn add_for_all_domains(con: &mut Client, user_change: &UserChange) -> Res<()> {
         Err(e) => Err(db::convert_psql_err(e)),
         Ok(rows) => Ok(rows),
     }?;
+    let domain_ids_len = domain_ids.len();
     let domain_ids = domain_ids.iter().map(|r| r.get::<_, Id>("id"));
 
     let mut values_sql = String::new();
-    for domain_id in domain_ids {
-        values_sql.push_str(&format!("({}, {})\n", user_change.id, domain_id));
+    for (i, domain_id) in domain_ids.enumerate() {
+        if i == domain_ids_len - 1 {
+            values_sql
+                .push_str(&format!("({}, {})", user_change.id, domain_id));
+            continue;
+        }
+        values_sql
+            .push_str(&format!("({}, {}),\n", user_change.id, domain_id));
     }
-    con.batch_execute(&format!(
+    let sql = &format!(
         "
         INSERT INTO domain_to_user_change (user_change_id, domain_id)
         VALUES
         {}",
-        &values_sql
-    ))
-    .unwrap();
+        values_sql.as_str()
+    );
+    con.batch_execute(&sql).unwrap();
 
     Ok(())
 }

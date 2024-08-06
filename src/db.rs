@@ -59,6 +59,8 @@ pub fn drop_db(apprc: &Apprc) {
 pub fn init(apprc: &Apprc) {
     info!("init db");
     let mut con = con(&apprc.sql).unwrap();
+    // we use user_change.user_detached_id to allow databases to freely
+    // delete users, but save del-action changes for them
     con.batch_execute(
         "
         CREATE TABLE IF NOT EXISTS appuser (
@@ -77,12 +79,12 @@ pub fn init(apprc: &Apprc) {
         );
         CREATE TABLE IF NOT EXISTS user_change (
             id SERIAL PRIMARY KEY,
-            user_id SERIAL REFERENCES appuser(id),
+            user_detached_id SERIAL,
             action VARCHAR(256) NOT NULL
         );
         CREATE TABLE IF NOT EXISTS domain_to_user_change (
-            domain_id SERIAL REFERENCES domain(id) ON UPDATE CASCADE,
-            user_change_id SERIAL REFERENCES user_change(id) ON UPDATE CASCADE
+            domain_id SERIAL REFERENCES domain(id),
+            user_change_id SERIAL REFERENCES user_change(id)
         );
     ",
     )
