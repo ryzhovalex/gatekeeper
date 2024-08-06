@@ -241,7 +241,7 @@ fn verify_domain_secret_from_header(
     apprc: &Apprc,
 ) -> Res<domain::Domain> {
     let Some(secret) = req.header("domain_secret") else {
-        return err::err("val_err", "can't get secret from header");
+        return err::reserr("val_err", "can't get secret from header");
     };
     domain::verify_secret(&secret.to_string(), &apprc)
 }

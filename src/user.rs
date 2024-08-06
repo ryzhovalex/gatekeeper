@@ -1,8 +1,4 @@
-use std::{
-    any::Any,
-    collections::HashMap,
-    fmt::{Debug, Display},
-};
+use std::fmt::{Debug, Display};
 
 use postgres::{Client, Row};
 use serde::{Deserialize, Serialize};
@@ -12,7 +8,7 @@ use crate::{
     db::{self, Id},
     password::hash_password,
     rskit::{
-        err::{err, ErrData},
+        err::{reserr, ErrData},
         query::Query,
         res::Res,
     },
@@ -64,7 +60,8 @@ pub fn create(data: &Reg, apprc: &Apprc) -> Res<User> {
             action: "del".to_string(),
         },
         apprc,
-    );
+    )
+    .unwrap();
 
     Ok(user)
 }
@@ -89,7 +86,7 @@ pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
     };
 
     if where_.is_empty() {
-        return err(
+        return reserr(
             "val_err",
             format!("failed to process searchq {:?}", searchq),
         );
@@ -106,7 +103,8 @@ pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
             action: "del".to_string(),
         },
         apprc,
-    );
+    )
+    .unwrap();
 
     Ok(())
 }

@@ -1,9 +1,13 @@
-use postgres::Row;
-use serde::{Deserialize, Serialize};
+use postgres::{
+    fallible_iterator::{FallibleIterator, Map},
+    Client, Row,
+};
+use serde::{de::value, Deserialize, Serialize};
 
 use crate::{
     asrt,
     db::{self, Id},
+    domain,
     rskit::{err, res::Res},
     Apprc,
 };
@@ -81,7 +85,7 @@ pub fn get_user_changes_for_domain(
 
 pub fn create(data: &CreateUserChange, apprc: &Apprc) -> Res<UserChange> {
     if data.username.is_none() && data.user_id.is_none() {
-        return err::err("val_err", "specify either username or user_id");
+        return err::reserr("val_err", "specify either username or user_id");
     }
 
     let mut con = db::con(&apprc.sql).unwrap();
@@ -105,5 +109,31 @@ pub fn create(data: &CreateUserChange, apprc: &Apprc) -> Res<UserChange> {
         )
         .unwrap()
     };
-    parse_row(&row)
+
+    let user_change = parse_row(&row).unwrap();
+    add_for_all_domains(&mut con, &user_change).unwrap();
+    Ok(user_change)
+}
+
+fn add_for_all_domains(con: &mut Client, user_change: &UserChange) -> Res<()> {
+    let domain_ids = match con.query("SELECT id from domain", &[]) {
+        Err(e) => Err(db::convert_psql_err(e)),
+        Ok(rows) => Ok(rows),
+    }?;
+    let domain_ids = domain_ids.iter().map(|r| r.get::<_, Id>("id"));
+
+    let mut values_sql = String::new();
+    for domain_id in domain_ids {
+        values_sql.push_str(&format!("({}, {})\n", user_change.id, domain_id));
+    }
+    con.batch_execute(&format!(
+        "
+        INSERT INTO domain_to_user_change (user_change_id, domain_id)
+        VALUES
+        {}",
+        &values_sql
+    ))
+    .unwrap();
+
+    Ok(())
 }

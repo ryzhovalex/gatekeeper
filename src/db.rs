@@ -1,9 +1,22 @@
-use crate::{rskit::res::Res, Apprc, SqlCfg};
+use crate::{
+    rskit::{
+        err::{self, ErrData},
+        res::Res,
+    },
+    Apprc, SqlCfg,
+};
 use log::{info, warn};
 use postgres::{Client, NoTls};
 
 pub type Id = i32;
 pub type Sid = String;
+
+pub fn convert_psql_err(db_err: postgres::Error) -> ErrData {
+    return err::ErrData::new(
+        "val_err",
+        db_err.as_db_error().unwrap().message(),
+    );
+}
 
 pub fn con(cfg: &SqlCfg) -> Res<Client> {
     let db = Client::connect(

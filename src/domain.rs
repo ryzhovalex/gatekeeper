@@ -64,7 +64,7 @@ pub fn init(apprc: &Apprc) -> Res<()> {
         ) {
             Err(e) => {
                 if e.code().unwrap().code() != "23505" {
-                    return err::err(
+                    return err::reserr(
                         "val_err",
                         e.as_db_error().unwrap().message(),
                     );

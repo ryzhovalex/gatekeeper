@@ -17,7 +17,7 @@ impl ErrData {
     }
 }
 
-pub fn err<T>(
+pub fn reserr<T>(
     errcode: impl Into<String>,
     msg: impl Into<String>,
 ) -> Result<T, ErrData> {
