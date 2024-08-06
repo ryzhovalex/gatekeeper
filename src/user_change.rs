@@ -14,7 +14,7 @@ use crate::{
     sql, Apprc,
 };
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UserChange {
     pub id: Id,
     pub action: String,
@@ -51,9 +51,9 @@ pub fn get_user_changes_for_domain(
     let rows = con
         .query(
             "
-            SELECT * FROM domain_to_user_change
+            SELECT * FROM user_change
+            JOIN domain_to_user_change ON domain_to_user_change.user_change_id = user_change.id
             JOIN domain ON domain.id = domain_to_user_change.domain_id
-            JOIN user_change ON user_change.id = domain_to_user_change.user_change_id
             WHERE domain.key = $1",
             &[&domain_key],
         )
@@ -74,17 +74,21 @@ pub fn get_user_changes_for_domain(
     if unlink && !user_change_ids.is_empty() {
         // user changes without links are saved in the db for the complete
         // history
-        con.query(
-            &format!(
-                "
-                DELETE FROM domain_to_user_change
-                {}",
-                &sql::build_where_in("user_change_id", &user_change_ids)
-                    .unwrap()
-            ),
-            &[],
-        )
-        .unwrap();
+        let sql = format!(
+            "
+            DELETE FROM domain_to_user_change
+            WHERE
+                domain_id IN (SELECT id FROM domain WHERE key = $1)
+                AND {}",
+            &sql::build_where_in(
+                "domain_to_user_change.user_change_id",
+                &user_change_ids
+            )
+            .unwrap()
+        );
+        dbg!(&user_changes);
+        dbg!(&sql);
+        con.execute(&sql, &[&domain_key]).unwrap();
     }
 
     Ok(user_changes)
