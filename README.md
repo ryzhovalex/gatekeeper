@@ -1,3 +1,3 @@
-# Gatekeeper
+# corund
 
 Standalone auth server.

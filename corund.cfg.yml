@@ -1,7 +1,7 @@
 sql:
   host: localhost
   port: 9005
-  dbname: gatekeeper_test
+  dbname: corund_test
   user: ryzhovalex
   password: pass
 domain:

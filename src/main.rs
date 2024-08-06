@@ -252,7 +252,7 @@ fn verify_domain_secret_from_header(
 fn main() {
     colog::init();
 
-    let mut file = File::open(path::cwd().unwrap().join("gatekeeper.cfg.yml")).unwrap();
+    let mut file = File::open(path::cwd().unwrap().join("corund.cfg.yml")).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
 
