@@ -2,8 +2,9 @@ use postgres::Row;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    asrt,
     db::{self, Id},
-    rskit::res::Res,
+    rskit::{err, res::Res},
     Apprc,
 };
 
@@ -14,7 +15,8 @@ pub struct UserChange {
 }
 
 pub struct CreateUserChange {
-    pub username: String,
+    pub user_id: Option<Id>,
+    pub username: Option<String>,
     pub action: String,
 }
 
@@ -41,9 +43,9 @@ pub fn get_user_changes_for_domain(
     let rows = con
         .query(
             "
-            SELECT * FROM domain_to_user_changes
-            JOIN domain ON domain.id = domain_to_user_changes.domain_id
-            JOIN user_change ON user_change.id = domain_to_user_changes.user_change_id
+            SELECT * FROM domain_to_user_change
+            JOIN domain ON domain.id = domain_to_user_change.domain_id
+            JOIN user_change ON user_change.id = domain_to_user_change.user_change_id
             WHERE domain.key = $1",
             &[&domain_key],
         )
@@ -62,7 +64,7 @@ pub fn get_user_changes_for_domain(
         None => true,
     };
 
-    if unlink {
+    if unlink && !user_change_ids.is_empty() {
         // user changes without links left in the db for the complete
         // history
         con.query(
@@ -78,15 +80,30 @@ pub fn get_user_changes_for_domain(
 }
 
 pub fn create(data: &CreateUserChange, apprc: &Apprc) -> Res<UserChange> {
+    if data.username.is_none() && data.user_id.is_none() {
+        return err::err("val_err", "specify either username or user_id");
+    }
+
     let mut con = db::con(&apprc.sql).unwrap();
-    let row = con
-        .query_one(
+    let row = if data.username.is_some() {
+        con.query_one(
             "
-            INSERT INTO user_change (user_id, action)
-            VALUES ((SELECT id FROM appuser WHERE username = $1), $2)
-            RETURNING *",
+                INSERT INTO user_change (user_id, action)
+                VALUES ((SELECT id FROM appuser WHERE username = $1), $2)
+                RETURNING *",
             &[&data.username, &data.action],
         )
-        .unwrap();
+        .unwrap()
+    } else {
+        asrt!(data.user_id.is_some());
+        con.query_one(
+            "
+                INSERT INTO user_change (user_id, action)
+                VALUES ($1, $2)
+                RETURNING *",
+            &[&data.user_id, &data.action],
+        )
+        .unwrap()
+    };
     parse_row(&row)
 }

@@ -1,3 +1,4 @@
+pub mod asrt;
 pub mod dict;
 pub mod err;
 pub mod path;

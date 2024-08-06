@@ -16,6 +16,7 @@ use crate::{
         query::Query,
         res::Res,
     },
+    user_change::{self, CreateUserChange},
     Apprc, Reg,
 };
 
@@ -53,7 +54,19 @@ pub fn create(data: &Reg, apprc: &Apprc) -> Res<User> {
             &[&data.username],
         )
         .unwrap();
-    parse_row(&row)
+
+    let user = parse_row(&row)?;
+
+    user_change::create(
+        &CreateUserChange {
+            user_id: Some(user.id),
+            username: None,
+            action: "del".to_string(),
+        },
+        apprc,
+    );
+
+    Ok(user)
 }
 
 pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
@@ -82,9 +95,18 @@ pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
         );
     }
 
-    let stmt = format!("DELETE FROM appuser WHERE {}", &where_);
-    dbg!(&stmt);
-    con.batch_execute(stmt.as_str()).unwrap();
+    let stmt = format!("DELETE FROM appuser WHERE {} RETURNING id", &where_);
+    let deld_user_id: Id =
+        con.query_one(stmt.as_str(), &[]).unwrap().get("id");
+
+    user_change::create(
+        &CreateUserChange {
+            user_id: Some(deld_user_id),
+            username: None,
+            action: "del".to_string(),
+        },
+        apprc,
+    );
 
     Ok(())
 }
@@ -160,7 +182,7 @@ pub fn set_rt_for_username(
 
 pub fn get_all_ids(apprc: &Apprc) -> Res<Vec<Id>> {
     let mut con = db::con(&apprc.sql).unwrap();
-    let rows = con.query("SELECT * FROM appuser", &[]).unwrap();
+    let rows = con.query("SELECT id FROM appuser", &[]).unwrap();
     let mut ids: Vec<Id> = Vec::new();
     for r in rows {
         ids.push(r.get("id"));
