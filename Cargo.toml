@@ -1,7 +1,9 @@
 [package]
 name = "corund"
 version = "0.1.0"
+description = "Portable auth server."
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 argon2 = "0.5.3"
