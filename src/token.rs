@@ -56,7 +56,7 @@ where
 {
     let encoded_secret: Hmac<Sha256> = Hmac::new_from_slice(secret).unwrap();
     let payload: T = token.verify_with_key(&encoded_secret).unwrap();
-    payload.check_exp(Time::from(60*60*24*360))?;
+    payload.check_exp(Time::from(60*60*24*365))?;
     Ok(payload)
 }
 
