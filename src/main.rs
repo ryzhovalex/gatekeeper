@@ -80,8 +80,8 @@ struct GetUserChangesForDomain {
     unlink: Option<bool>,
 }
 
-pub fn response_err(content: &ErrData) -> Response {
-    let data = serde_json::to_string(content).unwrap();
+pub fn response_err(errdata: &ErrData) -> Response {
+    let data = serde_json::to_string(errdata).unwrap();
 
     Response {
         status_code: 400,
@@ -143,12 +143,14 @@ fn rpc__login(req: &&Request, apprc: &Apprc) -> Response {
         user::get_by_username_with_hpassword(&login.username, &apprc)
     else {
         let err = err::ErrData::new(
-            "val_err".to_string(),
+            "auth_err".to_string(),
             format!("invalid username {}", login.username.to_owned()),
         );
         return response_err(&err);
     };
-    check_password(&login.password, &hpassword);
+    if !check_password(&login.password, &hpassword) {
+        return response_err(&ErrData::new("auth_err", "incorrect password"));
+    }
     let rt = token::create_rt(user.id).unwrap();
     user::set_rt_for_username(&login.username, &rt, &apprc).unwrap();
     Response::text(rt)
