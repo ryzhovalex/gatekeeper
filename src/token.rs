@@ -28,12 +28,16 @@ impl Expire for UserTokenPayload {
 pub trait Expire {
     fn get_created(&self) -> Res<Time>;
 
+    /// Checks if for the given delta the object is considered as expired.
+    ///
+    /// Returns exp time with relation to the given delta.
     fn check_exp(&self, delta: Time) -> Res<Time> {
         let created = *&self.get_created().unwrap();
-        if created + delta > utc() {
-            return reserr("val_err", "expired token");
+        let exp = created + delta;
+        if exp > utc() {
+            return reserr("exp_err", "expired token");
         }
-        Ok(created)
+        Ok(exp)
     }
 }
 

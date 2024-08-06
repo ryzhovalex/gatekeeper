@@ -162,6 +162,22 @@ pub fn del_rt(rt: &String, apprc: &Apprc) -> Res<()> {
     Ok(())
 }
 
+pub fn set_rt_for_user_id(
+    id: Id,
+    rt: &String,
+    apprc: &Apprc,
+) -> Res<()> {
+    let mut con = db::con(&apprc.sql).unwrap();
+
+    con.execute(
+        "UPDATE appuser SET rt = $1 WHERE id = $2",
+        &[&rt, &id],
+    )
+    .unwrap();
+
+    Ok(())
+}
+
 pub fn set_rt_for_username(
     username: &String,
     rt: &String,

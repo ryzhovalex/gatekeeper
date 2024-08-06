@@ -86,8 +86,6 @@ pub fn get_user_changes_for_domain(
             )
             .unwrap()
         );
-        dbg!(&user_changes);
-        dbg!(&sql);
         con.execute(&sql, &[&domain_key]).unwrap();
     }
 
