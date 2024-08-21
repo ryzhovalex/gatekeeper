@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::{
+    change::{self, CreateUserChange},
     db::{self, Id},
     password::hash_password,
-    rskit::{
-        err::{reserr, ErrData},
+    ryz::{
+        err::{reserr, Error},
         query::Query,
         res::Res,
     },
-    user_change::{self, CreateUserChange},
     Apprc, Reg,
 };
 
@@ -53,7 +53,7 @@ pub fn create(data: &Reg, apprc: &Apprc) -> Res<User> {
 
     let user = parse_row(&row)?;
 
-    user_change::create(
+    change::create(
         &CreateUserChange {
             user_id: Some(user.id),
             username: None,
@@ -96,7 +96,7 @@ pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
     let deld_user_id: Id =
         con.query_one(stmt.as_str(), &[]).unwrap().get("id");
 
-    user_change::create(
+    change::create(
         &CreateUserChange {
             user_id: Some(deld_user_id),
             username: None,

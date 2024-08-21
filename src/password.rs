@@ -3,7 +3,7 @@ use argon2::{
     Argon2, PasswordHash, PasswordVerifier,
 };
 
-use crate::rskit::res::Res;
+use crate::ryz::res::Res;
 
 pub fn hash_password(password: &String) -> Res<String> {
     let salt = SaltString::generate(&mut OsRng);

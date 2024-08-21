@@ -9,10 +9,14 @@ use serde::{de::value, Deserialize, Serialize};
 use crate::{
     asrt,
     db::{self, Id},
-    domain,
-    rskit::{err, res::Res},
+    ryz::{err, res::Res, time::Time},
     sql, Apprc,
 };
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Changes {
+    user: Vec<UserChange>,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserChange {
@@ -42,11 +46,7 @@ pub fn parse_row(row: &Row) -> Res<UserChange> {
 /// * `domain_key` - Key of the domain for which to fetch changes.
 /// * `unlink` - Whether to unlink changes for the requested domain.
 ///              Defaults to `true`.
-pub fn get_user_changes_for_domain(
-    domain_key: &String,
-    unlink: Option<bool>,
-    apprc: &Apprc,
-) -> Res<Vec<UserChange>> {
+pub fn get_changes(from: Time, apprc: &Apprc) -> Res<Vec<Changes>> {
     let mut con = db::con(&apprc.sql).unwrap();
     let rows = con
         .query(

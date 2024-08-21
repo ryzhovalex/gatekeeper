@@ -1,32 +1,32 @@
 use std::{env, fs::File, io::Read};
 
-use db::Id;
-use domain::{Domain, DomainCfg};
+use change::{get_changes, Changes, UserChange};
+use domain::DomainCfg;
 use hmac::{Hmac, Mac};
 use log::{debug, error, info, warn};
 use password::check_password;
 use rouille::{Request, Response, ResponseBody};
-use rskit::{
-    err::{self, ErrData},
+use ryz::{
+    err::{self, Error},
     path,
     query::Query,
     res::Res,
+    time::Time,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use token::{create_at, verify_rt};
 use user::{get_all_ids, get_by_id, get_by_rt, set_rt_for_username};
-use user_change::{get_user_changes_for_domain, UserChange};
 
 #[macro_use]
 extern crate rouille;
+mod change;
 mod db;
 mod domain;
 mod password;
-mod rskit;
+mod ryz;
 mod sql;
 mod token;
 mod user;
-mod user_change;
 
 #[derive(Debug, Deserialize)]
 struct Apprc {
@@ -36,11 +36,7 @@ struct Apprc {
 
 #[derive(Debug, Deserialize)]
 struct SqlCfg {
-    host: String,
-    port: u16,
-    dbname: String,
-    user: String,
-    password: String,
+    url: String,
 }
 
 impl Default for SqlCfg {
@@ -76,11 +72,11 @@ struct Reg {
 }
 
 #[derive(Deserialize)]
-struct GetUserChangesForDomain {
-    unlink: Option<bool>,
+struct GetChanges {
+    from: Time,
 }
 
-pub fn response_err(errdata: &ErrData) -> Response {
+pub fn response_err(errdata: &Error) -> Response {
     let data = serde_json::to_string(errdata).unwrap();
 
     Response {
@@ -94,30 +90,28 @@ pub fn response_err(errdata: &ErrData) -> Response {
     }
 }
 
-#[allow(non_snake_case)]
-fn rpc__reg(req: &&Request, apprc: &Apprc) -> Response {
+fn rpc_reg(req: &&Request, apprc: &Apprc) -> Response {
     let Some(server_api_token) = req.header("domain_secret") else {
-        return response_err(&err::ErrData::new(
-            "val_err",
-            "missing server api token",
+        return response_err(&err::Error::new(
+            Some("val_err"),
+            Some("missing server api token"),
         ));
     };
     let Ok(reg) = rouille::input::json_input::<Reg>(req) else {
-        return response_err(&err::ErrData::new(
-            "val_err".to_string(),
-            format!("invalid reg data"),
+        return response_err(&err::Error::new(
+            Some("val_err"),
+            Some(format!("invalid reg data").as_str()),
         ));
     };
     let user = user::create(&reg, &apprc).unwrap();
     Response::json(&user)
 }
 
-#[allow(non_snake_case)]
-fn rpc__dereg(req: &&Request, apprc: &Apprc) -> Response {
+fn rpc_dereg(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(searchq) = rouille::input::json_input::<Query>(req) else {
-        return response_err(&err::ErrData::new(
-            "val_err".to_string(),
-            format!("invalid searchq data"),
+        return response_err(&err::Error::new(
+            Some("val_err"),
+            Some(format!("invalid search data").as_str()),
         ));
     };
     user::del(&searchq, &apprc).unwrap();
@@ -130,38 +124,42 @@ fn rpc__dereg(req: &&Request, apprc: &Apprc) -> Response {
 /// by default).
 ///
 /// Returns refresh token.
-#[allow(non_snake_case)]
-fn rpc__login(req: &&Request, apprc: &Apprc) -> Response {
+fn rpc_login(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(login) = rouille::input::json_input::<Login>(req) else {
-        let err = err::ErrData::new(
-            "val_err".to_string(),
-            format!("invalid login data"),
+        let err = err::Error::new(
+            Some("val_err"),
+            Some(format!("invalid login data").as_str()),
         );
         return response_err(&err);
     };
     let Ok((user, hpassword)) =
         user::get_by_username_with_hpassword(&login.username, &apprc)
     else {
-        let err = err::ErrData::new(
-            "auth_err".to_string(),
-            format!("invalid username {}", login.username.to_owned()),
+        let err = err::Error::new(
+            Some("auth_err"),
+            Some(
+                format!("invalid username {}", login.username.to_owned())
+                    .as_str(),
+            ),
         );
         return response_err(&err);
     };
     if !check_password(&login.password, &hpassword) {
-        return response_err(&ErrData::new("auth_err", "incorrect password"));
+        return response_err(&Error::new(
+            Some("auth_err"),
+            Some("incorrect password"),
+        ));
     }
     let rt = token::create_rt(user.id).unwrap();
     user::set_rt_for_username(&login.username, &rt, &apprc).unwrap();
     Response::text(rt)
 }
 
-#[allow(non_snake_case)]
-fn rpc__logout(req: &&Request, apprc: &Apprc) -> Response {
+fn rpc_logout(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(logout) = rouille::input::json_input::<RtSignature>(req) else {
-        let err = err::ErrData::new(
-            "val_err".to_string(),
-            format!("invalid logout data"),
+        let err = err::Error::new(
+            Some("val_err"),
+            Some(format!("invalid logout data").as_str()),
         );
         return response_err(&err);
     };
@@ -169,20 +167,19 @@ fn rpc__logout(req: &&Request, apprc: &Apprc) -> Response {
     Response::empty_204()
 }
 
-#[allow(non_snake_case)]
-fn rpc__current(req: &&Request, apprc: &Apprc) -> Response {
+fn rpc_current(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(rt_signature) = rouille::input::json_input::<RtSignature>(req)
     else {
-        let err = err::ErrData::new(
-            "val_err".to_string(),
-            format!("invalid rt signature"),
+        let err = err::Error::new(
+            Some("val_err"),
+            Some(format!("invalid rt signature").as_str()),
         );
         return Response::json(&err);
     };
     let Ok((user, _)) = get_by_rt(&rt_signature.rt, &apprc) else {
-        return Response::json(&err::ErrData::new(
-            "val_err".to_string(),
-            format!("unknown refresh token"),
+        return Response::json(&err::Error::new(
+            Some("val_err"),
+            Some(format!("unknown refresh token").as_str()),
         ));
     };
     Response::json(&user)
@@ -193,21 +190,20 @@ where
     T: DeserializeOwned,
 {
     match rouille::input::json_input::<T>(req) {
-        Err(e) => Err(err::ErrData::new(
-            "val_err".to_string(),
-            format!("invalid req body"),
+        Err(e) => Err(err::Error::new(
+            Some("val_err"),
+            Some(format!("invalid req body").as_str()),
         )),
         Ok(v) => Ok(v),
     }
 }
 
-#[allow(non_snake_case)]
-fn rpc__access(req: &&Request, apprc: &Apprc) -> Response {
+fn rpc_access(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(rt_signature) = rouille::input::json_input::<RtSignature>(req)
     else {
-        let err = err::ErrData::new(
-            "val_err".to_string(),
-            format!("invalid rt signature"),
+        let err = err::Error::new(
+            Some("val_err"),
+            Some(format!("invalid rt signature").as_str()),
         );
         return Response::json(&err);
     };
@@ -215,36 +211,26 @@ fn rpc__access(req: &&Request, apprc: &Apprc) -> Response {
     let claims = verify_rt(&rt).unwrap();
     let user = get_by_id(claims.user_id, &apprc).unwrap();
     if user.rt != Some(rt) {
-        return Response::json(&ErrData::new(
-            "val_err",
-            "no such refresh token for user",
+        return Response::json(&Error::new(
+            Some("val_err"),
+            Some("no such refresh token for user"),
         ));
     }
     // we don't store access tokens since they intended to be short-lived
     Response::text(create_at(claims.user_id).unwrap())
 }
 
-#[allow(non_snake_case)]
-fn rpc__get_all_user_ids(req: &&Request, apprc: &Apprc) -> Res<Vec<Id>> {
-    get_all_ids(&apprc)
+fn rpc_get_modifications(req: &&Request, apprc: &Apprc) -> Res<Vec<Changes>> {
+    let body = parse::<GetChanges>(req)?;
+    get_changes(body.from, apprc)
 }
 
-#[allow(non_snake_case)]
-fn rpc__get_user_changes_for_domain(
-    req: &&Request,
-    domain: &Domain,
-    apprc: &Apprc,
-) -> Res<Vec<UserChange>> {
-    let body = parse::<GetUserChangesForDomain>(req)?;
-    get_user_changes_for_domain(&domain.key, body.unlink, apprc)
-}
-
-fn verify_domain_secret_from_header(
-    req: &&Request,
-    apprc: &Apprc,
-) -> Res<domain::Domain> {
+fn verify_domain_secret_from_header(req: &&Request, apprc: &Apprc) -> Res<()> {
     let Some(secret) = req.header("domain_secret") else {
-        return err::reserr("val_err", "can't get secret from header");
+        return err::reserr(
+            Some("val_err"),
+            Some("can't get secret from header"),
+        );
     };
     domain::verify_secret(&secret.to_string(), &apprc)
 }
@@ -252,7 +238,8 @@ fn verify_domain_secret_from_header(
 fn main() {
     colog::init();
 
-    let mut file = File::open(path::cwd().unwrap().join("corund.cfg.yml")).unwrap();
+    let mut file =
+        File::open(path::cwd().unwrap().join("corund.cfg.yml")).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
 
@@ -264,22 +251,20 @@ fn main() {
         db::init(&apprc);
     }
 
-    domain::init(&apprc).unwrap();
-
     info!("start server");
     rouille::start_server("0.0.0.0:3000", move |request| {
         router!(request,
             (POST) (/rpc/login) => {
-                rpc__login(&&request, &apprc)
+                rpc_login(&&request, &apprc)
             },
             (POST) (/rpc/logout) => {
-                rpc__logout(&&request, &apprc)
+                rpc_logout(&&request, &apprc)
             },
             (POST) (/rpc/current) => {
-                rpc__current(&&request, &apprc)
+                rpc_current(&&request, &apprc)
             },
             (POST) (/rpc/access) => {
-                rpc__access(&&request, &apprc)
+                rpc_access(&&request, &apprc)
             },
 
             // server routes, requires registered domain with server API token
@@ -288,32 +273,25 @@ fn main() {
                     Err(e) => return response_err(&e),
                     Ok(_) => ()
                 }
-                rpc__reg(&&request, &apprc)
+                rpc_reg(&&request, &apprc)
             },
             (POST) (/rpc/server/dereg) => {
                 match verify_domain_secret_from_header(&&request, &apprc) {
                     Err(e) => return response_err(&e),
                     Ok(_) => ()
                 }
-                rpc__dereg(&&request, &apprc)
+                rpc_dereg(&&request, &apprc)
             },
-            (POST) (/rpc/server/get_user_changes_for_domain) => {
-                let domain = match verify_domain_secret_from_header(&&request, &apprc) {
-                    Err(e) => return response_err(&e),
-                    Ok(d) => d
-                };
-                match rpc__get_user_changes_for_domain(&&request, &domain, &apprc) {
-                    Err(e) => response_err(&e),
-                    Ok(v) => Response::json(&v)
-                }
-            },
-            (POST) (/rpc/server/get_all_user_ids) => {
-                match verify_domain_secret_from_header(&&request, &apprc) {
+            (POST) (/rpc/server/get_modifications) => {
+                match verify_domain_secret_from_header(
+                    &&request, &apprc
+                ) {
                     Err(e) => return response_err(&e),
                     Ok(_) => ()
-                }
-
-                match rpc__get_all_user_ids(&&request, &apprc) {
+                };
+                match rpc_get_modifications(
+                    &&request, &apprc
+                ) {
                     Err(e) => response_err(&e),
                     Ok(v) => Response::json(&v)
                 }

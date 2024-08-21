@@ -1,7 +1,7 @@
-use crate::err::ErrData;
-use crate::rskit::err::reserr;
-use crate::rskit::time::{self, utc, Time};
-use crate::{rskit::res::Res, rskit::time::delta};
+use crate::err::Error;
+use crate::ryz::err::reserr;
+use crate::ryz::time::{self, utc, Time};
+use crate::{ryz::res::Res, ryz::time::delta};
 use hmac::{Hmac, Mac};
 use jwt::VerifyWithKey;
 use jwt::{SignWithKey, ToBase64};
@@ -56,14 +56,14 @@ where
 {
     let encoded_secret: Hmac<Sha256> = Hmac::new_from_slice(secret).unwrap();
     let payload: T = token.verify_with_key(&encoded_secret).unwrap();
-    payload.check_exp(Time::from(60*60*24*365))?;
+    payload.check_exp(Time::from(60 * 60 * 24 * 365))?;
     Ok(payload)
 }
 
 pub fn create_rt(user_id: i32) -> Res<String> {
     let payload = UserTokenPayload {
         user_id: user_id,
-        created: utc()
+        created: utc(),
     };
     create_token(&payload, b"weloveauth")
 }
@@ -71,7 +71,7 @@ pub fn create_rt(user_id: i32) -> Res<String> {
 pub fn create_at(user_id: i32) -> Res<String> {
     let payload = UserTokenPayload {
         user_id: user_id,
-        created: utc()
+        created: utc(),
     };
     create_token(&payload, b"helloworld")
 }

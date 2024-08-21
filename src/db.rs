@@ -1,6 +1,6 @@
 use crate::{
-    rskit::{
-        err::{self, ErrData},
+    ryz::{
+        err::{self, Error},
         res::Res,
     },
     Apprc, SqlCfg,
@@ -12,8 +12,8 @@ pub type Id = i32;
 #[allow(dead_code)]
 pub type Sid = String;
 
-pub fn convert_psql_err(db_err: postgres::Error) -> ErrData {
-    return err::ErrData::new(
+pub fn convert_psql_err(db_err: postgres::Error) -> Error {
+    return err::Error::new(
         "val_err",
         db_err.as_db_error().unwrap().message(),
     );

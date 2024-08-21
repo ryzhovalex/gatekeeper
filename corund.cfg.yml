@@ -1,14 +1,5 @@
 sql:
-  host: localhost
-  port: 9005
-  dbname: corund_test
-  user: ryzhovalex
-  password: pass
+  url: postgres://postgres:postgres@localhost:9005/corund_test
 domain:
-  domains:
-    -
-      key: test_1
-      secret: hello
-    -
-      key: test_2
-      secret: world
+  secret: stackunderflow
+
