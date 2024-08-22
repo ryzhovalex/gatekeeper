@@ -84,7 +84,7 @@ pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
     Ok(user.to_msg())
 }
 
-pub fn del_one(sq: &Query, apprc: &Apprc, con: &mut Con) -> Res<()> {
+pub fn del_one(sq: &Query, con: &mut Con) -> Res<()> {
     let id = sq.get("id");
     let username = sq.get("username");
     let mut q = diesel::delete(schema::user::table).into_boxed();
@@ -105,7 +105,6 @@ pub fn del_one(sq: &Query, apprc: &Apprc, con: &mut Con) -> Res<()> {
             user_id: id,
             action: ChangeAction::Del,
         },
-        apprc,
         con,
     )
     .unwrap();
@@ -113,21 +112,19 @@ pub fn del_one(sq: &Query, apprc: &Apprc, con: &mut Con) -> Res<()> {
     Ok(())
 }
 
-pub fn get_by_id(id: i32, apprc: &Apprc) -> Res<User> {
-    let mut con = db::con(&apprc.sql).unwrap();
-
-    let row = con
-        .query_one("SELECT * FROM appuser WHERE id = $1", &[&id])
-        .unwrap();
-
-    Ok(parse_row(&row).unwrap())
+pub fn get_by_id(id: i32, con: &mut Con) -> Res<User> {
+    Ok(schema::user::table
+        .find(id)
+        .select(UserTable::as_select())
+        .first(con)
+        .unwrap()
+        .to_msg())
 }
 
 pub fn get_by_username_with_hpassword(
     username: &String,
-    apprc: &Apprc,
+    con: &mut Con
 ) -> Res<(User, String)> {
-    let mut con = db::con(&apprc.sql).unwrap();
 
     let row = con
         .query_one("SELECT * FROM appuser WHERE username = $1", &[&username])

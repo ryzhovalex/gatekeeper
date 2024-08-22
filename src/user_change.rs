@@ -124,11 +124,7 @@ pub fn get(from: Time, apprc: &Apprc) -> Res<Vec<UserChange>> {
     Ok(user_changes)
 }
 
-pub fn new(
-    data: &NewUserChange,
-    apprc: &Apprc,
-    con: &mut Con,
-) -> Res<UserChange> {
+pub fn new(data: &NewUserChange, con: &mut Con) -> Res<UserChange> {
     if data.username.is_none() && data.user_id.is_none() {
         return err::make("val_err", "specify either username or user_id");
     }
