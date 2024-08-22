@@ -17,25 +17,25 @@ impl Error {
     }
 }
 
-pub fn make_base() -> Res<()> {
+pub fn make_base<T>() -> Res<T> {
     Err(Error::new(None, None))
 }
 
-pub fn make_code(
+pub fn make_code<T>(
     code: Option<&str>
-) -> Res<()> {
+) -> Res<T> {
     Err(Error::new(code, None))
 }
 
-pub fn make_msg(
+pub fn make_msg<T>(
     code: Option<&str>
-) -> Res<()> {
+) -> Res<T> {
     Err(Error::new(code, None))
 }
 
-pub fn make(
+pub fn make<T>(
     code: Option<&str>,
     msg: Option<&str>,
-) -> Res<()> {
+) -> Res<T> {
     Err(Error::new(code, msg))
 }

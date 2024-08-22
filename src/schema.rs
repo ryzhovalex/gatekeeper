@@ -10,3 +10,13 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    user_change {
+        id -> Integer,
+        time -> Double,
+        action -> VarChar,
+        user_id -> Integer
+    }
+}
+
+diesel::joinable!(user_change -> user (user_id));

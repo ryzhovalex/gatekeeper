@@ -1,5 +1,6 @@
 use std::fmt::Write;
 
+use diesel::{prelude::Queryable, Selectable};
 use postgres::{
     fallible_iterator::{FallibleIterator, Map},
     Client, Row,
@@ -7,23 +8,59 @@ use postgres::{
 use serde::{de::value, Deserialize, Serialize};
 
 use crate::{
-    asrt,
-    db::{self, Id},
-    ryz::{err, res::Res, time::Time},
-    sql, Apprc,
+    asrt, db::{self, Id}, quco::Collection, ryz::{enm::StrEnum, err, res::Res, time::Time}, schema, sql, Apprc
 };
 
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ChangeAction {
     New,
     Del
+}
+
+impl StrEnum for ChangeAction {
+    fn to_str(&self) -> &str {
+        match self {
+            ChangeAction::New => "new",
+            ChangeAction::Del => "del"
+        }
+    }
+
+    fn from_str(s: &str) -> Res<Self> {
+        match s {
+            "new" => Ok(ChangeAction::New),
+            "del" => Ok(ChangeAction::Del),
+            _ => err::make_base()
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserChange {
     pub id: Id,
     pub time: Time,
+    pub action: ChangeAction,
+    pub user_id: Id,
+}
+
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = schema::user_change)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct UserChangeTable {
+    pub id: Id,
+    pub time: Time,
     pub action: String,
     pub user_id: Id,
+}
+
+impl Collection<UserChange> for UserChangeTable {
+    fn to_msg(&self) -> UserChange {
+        UserChange {
+            id: self.id.to_owned(),
+            time: self.time.to_owned(),
+            action: self.action.to_owned(),
+            user_id: self.user_id.to_owned()
+        }
+    }
 }
 
 pub struct NewUserChange {
