@@ -6,10 +6,12 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::{
+    asrt,
     db::{self, Con, Id},
     password::hash_password,
     quco::Collection,
     ryz::{
+        asrt,
         err::{self, make, Error},
         query::Query,
         res::Res,
@@ -75,29 +77,36 @@ pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
             action: ChangeAction::New,
         },
         apprc,
-        con
+        con,
     )
     .unwrap();
 
     Ok(user.to_msg())
 }
 
-pub fn del(sq: &Query, apprc: &Apprc, con: &mut Con) -> Res<()> {
+pub fn del_one(sq: &Query, apprc: &Apprc, con: &mut Con) -> Res<()> {
     let id = sq.get("id");
     let username = sq.get("username");
-    diesel::delete(schema::user.find());
+    let mut q = diesel::delete(schema::user::table).into_boxed();
+    if id.is_some() {
+        let val = serde_json::from_value::<Id>(id.unwrap().clone()).unwrap();
+        q = q.filter(schema::user::id.eq(val));
+    }
+    if username.is_some() {
+        let val = serde_json::from_value::<String>(username.unwrap().clone())
+            .unwrap();
+        q = q.filter(schema::user::username.eq(val));
+    }
 
-    let stmt = format!("DELETE FROM appuser WHERE {} RETURNING id", &where_);
-    let deld_user_id: Id =
-        con.query_one(stmt.as_str(), &[]).unwrap().get("id");
+    let id = q.returning(schema::user::id).get_result::<Id>(con).unwrap();
 
     user_change::new(
         &NewUserChange {
-            user_id: Some(deld_user_id),
-            username: None,
-            action: "del".to_string(),
+            user_id: id,
+            action: ChangeAction::Del,
         },
         apprc,
+        con,
     )
     .unwrap();
 

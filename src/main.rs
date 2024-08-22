@@ -110,7 +110,7 @@ fn rpc_dereg(req: &&Request, apprc: &Apprc) -> Response {
             format!("invalid search data").as_str(),
         ));
     };
-    user::del(&sq, &apprc).unwrap();
+    user::del_one(&sq, &apprc).unwrap();
     Response::empty_204()
 }
 
