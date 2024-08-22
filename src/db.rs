@@ -14,5 +14,6 @@ pub type Id = i32;
 pub type Sid = String;
 
 pub fn con(cfg: &SqlCfg) -> Res<PgConnection> {
-    Ok(PgConnection::establish(&cfg.url).unwrap_or_else(|_| panic!("cannot connect to db")))
+    Ok(PgConnection::establish(&cfg.url)
+        .unwrap_or_else(|_| panic!("cannot connect to db")))
 }

@@ -8,34 +8,50 @@ pub struct Error {
     msg: String,
 }
 
-impl Error {
-    pub fn new(code: Option<&str>, msg: Option<&str>) -> Self {
+impl Default for Error {
+    fn default() -> Self {
         Self {
-            code: code.unwrap_or("err").into(),
-            msg: msg.unwrap_or("").into(),
+            code: "err".to_string(),
+            msg: "".to_string(),
         }
     }
 }
 
-pub fn make_base<T>() -> Res<T> {
-    Err(Error::new(None, None))
+impl Error {
+    pub fn new(code: &str, msg: &str) -> Self {
+        Self {
+            code: code.to_string(),
+            msg: msg.to_string(),
+        }
+    }
+
+    pub fn new_code(code: &str) -> Self {
+        Self {
+            code: code.to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn new_msg(msg: &str) -> Self {
+        Self {
+            msg: msg.to_string(),
+            ..Default::default()
+        }
+    }
 }
 
-pub fn make_code<T>(
-    code: Option<&str>
-) -> Res<T> {
-    Err(Error::new(code, None))
+pub fn make_default<T>() -> Res<T> {
+    Err(Error::default())
 }
 
-pub fn make_msg<T>(
-    code: Option<&str>
-) -> Res<T> {
-    Err(Error::new(code, None))
+pub fn make_code<T>(code: &str) -> Res<T> {
+    Err(Error::new_code(code))
 }
 
-pub fn make<T>(
-    code: Option<&str>,
-    msg: Option<&str>,
-) -> Res<T> {
+pub fn make_msg<T>(msg: &str) -> Res<T> {
+    Err(Error::new_msg(msg))
+}
+
+pub fn make<T>(code: &str, msg: &str) -> Res<T> {
     Err(Error::new(code, msg))
 }

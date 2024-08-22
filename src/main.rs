@@ -1,6 +1,5 @@
 use std::{env, fs::File, io::Read};
 
-use user_change::{get, Changes, UserChange};
 use diesel::prelude::Insertable;
 use domain::DomainCfg;
 use hmac::{Hmac, Mac};
@@ -20,16 +19,16 @@ use user::{get_all_ids, get_by_id, get_by_rt, set_rt_for_username};
 
 #[macro_use]
 extern crate rouille;
-mod quco;
-mod user_change;
 mod db;
 mod domain;
 mod password;
+mod quco;
 mod ryz;
+mod schema;
 mod sql;
 mod token;
 mod user;
-mod schema;
+mod user_change;
 
 #[derive(Debug, Deserialize)]
 struct Apprc {
@@ -93,29 +92,25 @@ pub fn response_err(errdata: &Error) -> Response {
 
 fn rpc_reg(req: &&Request, apprc: &Apprc) -> Response {
     let Some(server_api_token) = req.header("domain_secret") else {
-        return response_err(&err::Error::new(
-            Some("val_err"),
-            Some("missing server api token"),
-        ));
+        return response_err(&err::Error::new_msg("missing server api token"));
     };
     let Ok(reg) = rouille::input::json_input::<Reg>(req) else {
-        return response_err(&err::Error::new(
-            Some("val_err"),
-            Some(format!("invalid reg data").as_str()),
+        return response_err(&err::Error::new_msg(
+            format!("invalid reg data").as_str(),
         ));
     };
-    let user = user::new(&reg, &apprc).unwrap();
+    let con = &mut db::con(&apprc.sql).unwrap();
+    let user = user::new(&reg, &apprc, con).unwrap();
     Response::json(&user)
 }
 
 fn rpc_dereg(req: &&Request, apprc: &Apprc) -> Response {
-    let Ok(searchq) = rouille::input::json_input::<Query>(req) else {
-        return response_err(&err::Error::new(
-            Some("val_err"),
-            Some(format!("invalid search data").as_str()),
+    let Ok(sq) = rouille::input::json_input::<Query>(req) else {
+        return response_err(&err::Error::new_msg(
+            format!("invalid search data").as_str(),
         ));
     };
-    user::del(&searchq, &apprc).unwrap();
+    user::del(&sq, &apprc).unwrap();
     Response::empty_204()
 }
 

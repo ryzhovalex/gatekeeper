@@ -8,20 +8,24 @@ use postgres::{
 use serde::{de::value, Deserialize, Serialize};
 
 use crate::{
-    asrt, db::{self, Id}, quco::Collection, ryz::{enm::StrEnum, err, res::Res, time::Time}, schema, sql, Apprc
+    asrt,
+    db::{self, Con, Id},
+    quco::Collection,
+    ryz::{enm::StrEnum, err, res::Res, time::Time},
+    schema, sql, Apprc,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ChangeAction {
     New,
-    Del
+    Del,
 }
 
 impl StrEnum for ChangeAction {
     fn to_str(&self) -> &str {
         match self {
             ChangeAction::New => "new",
-            ChangeAction::Del => "del"
+            ChangeAction::Del => "del",
         }
     }
 
@@ -29,7 +33,7 @@ impl StrEnum for ChangeAction {
         match s {
             "new" => Ok(ChangeAction::New),
             "del" => Ok(ChangeAction::Del),
-            _ => err::make_base()
+            _ => err::make_default(),
         }
     }
 }
@@ -58,14 +62,14 @@ impl Collection<UserChange> for UserChangeTable {
             id: self.id.to_owned(),
             time: self.time.to_owned(),
             action: self.action.to_owned(),
-            user_id: self.user_id.to_owned()
+            user_id: self.user_id.to_owned(),
         }
     }
 }
 
 pub struct NewUserChange {
     pub user_id: Id,
-    pub action: ChangeAction
+    pub action: ChangeAction,
 }
 
 /// Fetches all user changes for a domain.
@@ -120,7 +124,11 @@ pub fn get(from: Time, apprc: &Apprc) -> Res<Vec<UserChange>> {
     Ok(user_changes)
 }
 
-pub fn new(data: &NewUserChange, apprc: &Apprc) -> Res<UserChange> {
+pub fn new(
+    data: &NewUserChange,
+    apprc: &Apprc,
+    con: &mut Con,
+) -> Res<UserChange> {
     if data.username.is_none() && data.user_id.is_none() {
         return err::make("val_err", "specify either username or user_id");
     }

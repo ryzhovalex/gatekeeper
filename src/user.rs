@@ -1,16 +1,22 @@
 use std::fmt::{Debug, Display};
 
-use postgres::{Client, Row};
 use diesel::prelude::*;
+use postgres::{Client, Row};
 use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::{
-    db::{self, Con, Id}, password::hash_password, quco::Collection, ryz::{
-        err::{make, Error},
+    db::{self, Con, Id},
+    password::hash_password,
+    quco::Collection,
+    ryz::{
+        err::{self, make, Error},
         query::Query,
         res::Res,
-    }, schema, user_change::{self, ChangeAction, NewUserChange}, Apprc, InsertableReg, Reg
+    },
+    schema,
+    user_change::{self, ChangeAction, NewUserChange},
+    Apprc, InsertableReg, Reg,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -44,7 +50,7 @@ impl Collection<User> for UserTable {
             firstname: self.firstname.to_owned(),
             patronym: self.patronym.to_owned(),
             surname: self.surname.to_owned(),
-            rt: self.rt.to_owned()
+            rt: self.rt.to_owned(),
         }
     }
 }
@@ -57,7 +63,7 @@ pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
             hpassword: hpassword.to_owned(),
             firstname: reg.firstname.to_owned(),
             patronym: reg.patronym.to_owned(),
-            surname: reg.surname.to_owned()
+            surname: reg.surname.to_owned(),
         })
         .returning(UserTable::as_returning())
         .get_result(con)
@@ -75,11 +81,9 @@ pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
     Ok(user.to_msg())
 }
 
-pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
-    let mut con = db::con(&apprc.sql).unwrap();
-
-    let id = searchq.get("id");
-    let username = searchq.get("username");
+pub fn del(sq: &Query, apprc: &Apprc, con: &mut Con) -> Res<()> {
+    let id = sq.get("id");
+    let username = sq.get("username");
     let where_ = if id.is_some() && username.is_some() {
         format!(
             "id = {} AND username = '{}'",
@@ -95,9 +99,8 @@ pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
     };
 
     if where_.is_empty() {
-        return make(
-            "val_err",
-            format!("failed to process searchq {:?}", searchq),
+        return err::make_msg(
+            format!("failed to process searchq {:?}", sq).as_str(),
         );
     }
 
