@@ -75,6 +75,7 @@ pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
             action: ChangeAction::New,
         },
         apprc,
+        con
     )
     .unwrap();
 
@@ -84,25 +85,7 @@ pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
 pub fn del(sq: &Query, apprc: &Apprc, con: &mut Con) -> Res<()> {
     let id = sq.get("id");
     let username = sq.get("username");
-    let where_ = if id.is_some() && username.is_some() {
-        format!(
-            "id = {} AND username = '{}'",
-            id.unwrap(),
-            username.unwrap().as_str().unwrap()
-        )
-    } else if id.is_some() {
-        format!("id = {}", id.unwrap())
-    } else if username.is_some() {
-        format!("username = '{}'", username.unwrap().as_str().unwrap())
-    } else {
-        String::new()
-    };
-
-    if where_.is_empty() {
-        return err::make_msg(
-            format!("failed to process searchq {:?}", sq).as_str(),
-        );
-    }
+    diesel::delete(schema::user.find());
 
     let stmt = format!("DELETE FROM appuser WHERE {} RETURNING id", &where_);
     let deld_user_id: Id =
