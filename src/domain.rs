@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 use crate::{
-    ryz::{err::reserr, res::Res},
+    ryz::{err::make, res::Res},
     Apprc,
 };
 
@@ -13,6 +13,6 @@ pub struct DomainCfg {
 pub fn verify_secret(secret: &String, apprc: &Apprc) -> Res<()> {
     match secret.as_str() == apprc.domain.secret.as_str() {
         true => Ok(()),
-        false => reserr(None, None),
+        false => make(None, None),
     }
 }

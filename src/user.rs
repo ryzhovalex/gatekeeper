@@ -1,19 +1,16 @@
 use std::fmt::{Debug, Display};
 
 use postgres::{Client, Row};
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::{
-    change::{self, CreateUserChange},
-    db::{self, Id},
-    password::hash_password,
-    ryz::{
-        err::{reserr, Error},
+    db::{self, Con, Id}, password::hash_password, quco::Collection, ryz::{
+        err::{make, Error},
         query::Query,
         res::Res,
-    },
-    Apprc, Reg,
+    }, schema, user_change::{self, ChangeAction, NewUserChange}, Apprc, InsertableReg, Reg
 };
 
 #[derive(Serialize, Deserialize)]
@@ -26,44 +23,56 @@ pub struct User {
     pub rt: Option<String>,
 }
 
-pub fn create(data: &Reg, apprc: &Apprc) -> Res<User> {
-    let mut con = db::con(&apprc.sql).unwrap();
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = schema::user)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct UserTable {
+    pub id: Id,
+    pub hpassword: String,
+    pub username: String,
+    pub firstname: Option<String>,
+    pub patronym: Option<String>,
+    pub surname: Option<String>,
+    pub rt: Option<String>,
+}
 
-    let hpassword = hash_password(&data.password).unwrap();
-    con.execute(
-        "
-            INSERT INTO appuser (username, hpassword, firstname, patronym, surname)
-            VALUES ($1, $2, $3, $4, $5)
-        ",
-        &[
-            &data.username,
-            &hpassword,
-            &data.firstname.to_owned().unwrap_or("".to_string()),
-            &data.patronym.to_owned().unwrap_or("".to_string()),
-            &data.surname.to_owned().unwrap_or("".to_string())
-        ],
-    )
-    .unwrap();
-    let row = con
-        .query_one(
-            "SELECT * FROM appuser WHERE username = $1",
-            &[&data.username],
-        )
+impl Collection<User> for UserTable {
+    fn to_msg(&self) -> User {
+        User {
+            id: self.id.to_owned(),
+            username: self.username.to_owned(),
+            firstname: self.firstname.to_owned(),
+            patronym: self.patronym.to_owned(),
+            surname: self.surname.to_owned(),
+            rt: self.rt.to_owned()
+        }
+    }
+}
+
+pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
+    let hpassword = hash_password(&reg.password).unwrap();
+    let user: UserTable = diesel::insert_into(schema::user::table)
+        .values(&InsertableReg {
+            username: reg.username.to_owned(),
+            hpassword: hpassword.to_owned(),
+            firstname: reg.firstname.to_owned(),
+            patronym: reg.patronym.to_owned(),
+            surname: reg.surname.to_owned()
+        })
+        .returning(UserTable::as_returning())
+        .get_result(con)
         .unwrap();
 
-    let user = parse_row(&row)?;
-
-    change::create(
-        &CreateUserChange {
-            user_id: Some(user.id),
-            username: None,
-            action: "create".to_string(),
+    user_change::new(
+        &NewUserChange {
+            user_id: user.id,
+            action: ChangeAction::New,
         },
         apprc,
     )
     .unwrap();
 
-    Ok(user)
+    Ok(user.to_msg())
 }
 
 pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
@@ -86,7 +95,7 @@ pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
     };
 
     if where_.is_empty() {
-        return reserr(
+        return make(
             "val_err",
             format!("failed to process searchq {:?}", searchq),
         );
@@ -96,8 +105,8 @@ pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
     let deld_user_id: Id =
         con.query_one(stmt.as_str(), &[]).unwrap().get("id");
 
-    change::create(
-        &CreateUserChange {
+    user_change::new(
+        &NewUserChange {
             user_id: Some(deld_user_id),
             username: None,
             action: "del".to_string(),
@@ -107,17 +116,6 @@ pub fn del(searchq: &Query, apprc: &Apprc) -> Res<()> {
     .unwrap();
 
     Ok(())
-}
-
-fn parse_row(row: &Row) -> Res<User> {
-    Ok(User {
-        id: row.get("id"),
-        username: row.get("username"),
-        firstname: row.get("firstname"),
-        patronym: row.get("patronym"),
-        surname: row.get("surname"),
-        rt: row.get("rt"),
-    })
 }
 
 pub fn get_by_id(id: i32, apprc: &Apprc) -> Res<User> {

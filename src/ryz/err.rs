@@ -1,23 +1,41 @@
 use serde::{Deserialize, Serialize};
 
+use super::res::Res;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Error {
-    errcode: String,
+    code: String,
     msg: String,
 }
 
 impl Error {
-    pub fn new(errcode: Option<&str>, msg: Option<&str>) -> Self {
+    pub fn new(code: Option<&str>, msg: Option<&str>) -> Self {
         Self {
-            errcode: errcode.unwrap_or("err").into(),
+            code: code.unwrap_or("err").into(),
             msg: msg.unwrap_or("").into(),
         }
     }
 }
 
-pub fn reserr<T>(
-    errcode: Option<&str>,
+pub fn make_base() -> Res<()> {
+    Err(Error::new(None, None))
+}
+
+pub fn make_code(
+    code: Option<&str>
+) -> Res<()> {
+    Err(Error::new(code, None))
+}
+
+pub fn make_msg(
+    code: Option<&str>
+) -> Res<()> {
+    Err(Error::new(code, None))
+}
+
+pub fn make(
+    code: Option<&str>,
     msg: Option<&str>,
-) -> Result<T, Error> {
-    Err(Error::new(errcode, msg))
+) -> Res<()> {
+    Err(Error::new(code, msg))
 }

@@ -1,6 +1,7 @@
 use std::{env, fs::File, io::Read};
 
-use change::{get_changes, Changes, UserChange};
+use user_change::{get, Changes, UserChange};
+use diesel::prelude::Insertable;
 use domain::DomainCfg;
 use hmac::{Hmac, Mac};
 use log::{debug, error, info, warn};
@@ -19,7 +20,8 @@ use user::{get_all_ids, get_by_id, get_by_rt, set_rt_for_username};
 
 #[macro_use]
 extern crate rouille;
-mod change;
+mod quco;
+mod user_change;
 mod db;
 mod domain;
 mod password;
@@ -27,6 +29,7 @@ mod ryz;
 mod sql;
 mod token;
 mod user;
+mod schema;
 
 #[derive(Debug, Deserialize)]
 struct Apprc {
@@ -37,18 +40,6 @@ struct Apprc {
 #[derive(Debug, Deserialize)]
 struct SqlCfg {
     url: String,
-}
-
-impl Default for SqlCfg {
-    fn default() -> SqlCfg {
-        SqlCfg {
-            host: "localhost".to_string(),
-            port: 5432,
-            dbname: "postgres".to_string(),
-            user: "postgres".to_string(),
-            password: "postgres".to_string(),
-        }
-    }
 }
 
 #[derive(Deserialize)]
@@ -66,6 +57,16 @@ struct RtSignature {
 struct Reg {
     pub username: String,
     pub password: String,
+    pub firstname: Option<String>,
+    pub patronym: Option<String>,
+    pub surname: Option<String>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name=schema::user)]
+pub struct InsertableReg {
+    pub username: String,
+    pub hpassword: String,
     pub firstname: Option<String>,
     pub patronym: Option<String>,
     pub surname: Option<String>,
@@ -103,7 +104,7 @@ fn rpc_reg(req: &&Request, apprc: &Apprc) -> Response {
             Some(format!("invalid reg data").as_str()),
         ));
     };
-    let user = user::create(&reg, &apprc).unwrap();
+    let user = user::new(&reg, &apprc).unwrap();
     Response::json(&user)
 }
 
@@ -220,14 +221,14 @@ fn rpc_access(req: &&Request, apprc: &Apprc) -> Response {
     Response::text(create_at(claims.user_id).unwrap())
 }
 
-fn rpc_get_modifications(req: &&Request, apprc: &Apprc) -> Res<Vec<Changes>> {
+fn rpc_get_user_changes(req: &&Request, apprc: &Apprc) -> Res<Vec<Changes>> {
     let body = parse::<GetChanges>(req)?;
-    get_changes(body.from, apprc)
+    user_change::get(body.from, apprc)
 }
 
 fn verify_domain_secret_from_header(req: &&Request, apprc: &Apprc) -> Res<()> {
     let Some(secret) = req.header("domain_secret") else {
-        return err::reserr(
+        return err::make(
             Some("val_err"),
             Some("can't get secret from header"),
         );
@@ -282,14 +283,14 @@ fn main() {
                 }
                 rpc_dereg(&&request, &apprc)
             },
-            (POST) (/rpc/server/get_modifications) => {
+            (POST) (/rpc/server/get_user_changes) => {
                 match verify_domain_secret_from_header(
                     &&request, &apprc
                 ) {
                     Err(e) => return response_err(&e),
                     Ok(_) => ()
                 };
-                match rpc_get_modifications(
+                match rpc_get_user_changes(
                     &&request, &apprc
                 ) {
                     Err(e) => response_err(&e),

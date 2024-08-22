@@ -13,41 +13,32 @@ use crate::{
     sql, Apprc,
 };
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Changes {
-    user: Vec<UserChange>,
+pub enum ChangeAction {
+    New,
+    Del
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserChange {
     pub id: Id,
+    pub time: Time,
     pub action: String,
     pub user_id: Id,
 }
 
-pub struct CreateUserChange {
-    pub user_id: Option<Id>,
-    pub username: Option<String>,
-    pub action: String,
-}
-
-pub fn parse_row(row: &Row) -> Res<UserChange> {
-    Ok(UserChange {
-        id: row.get("id"),
-        action: row.get("action"),
-        user_id: row.get("user_detached_id"),
-    })
+pub struct NewUserChange {
+    pub user_id: Id,
+    pub action: ChangeAction
 }
 
 /// Fetches all user changes for a domain.
 ///
 /// # Args
 ///
-/// * `domain_key` - Key of the domain for which to fetch changes.
-/// * `unlink` - Whether to unlink changes for the requested domain.
-///              Defaults to `true`.
-pub fn get_changes(from: Time, apprc: &Apprc) -> Res<Vec<Changes>> {
-    let mut con = db::con(&apprc.sql).unwrap();
+/// * `from` - from which time to fetch changes
+pub fn get(from: Time, apprc: &Apprc) -> Res<Vec<UserChange>> {
+    let con = &mut db::con(&apprc.sql).unwrap();
+
     let rows = con
         .query(
             "
@@ -92,9 +83,9 @@ pub fn get_changes(from: Time, apprc: &Apprc) -> Res<Vec<Changes>> {
     Ok(user_changes)
 }
 
-pub fn create(data: &CreateUserChange, apprc: &Apprc) -> Res<UserChange> {
+pub fn new(data: &NewUserChange, apprc: &Apprc) -> Res<UserChange> {
     if data.username.is_none() && data.user_id.is_none() {
-        return err::reserr("val_err", "specify either username or user_id");
+        return err::make("val_err", "specify either username or user_id");
     }
 
     let mut con = db::con(&apprc.sql).unwrap();
