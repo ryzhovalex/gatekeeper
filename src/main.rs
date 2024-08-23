@@ -1,7 +1,7 @@
-use std::{env, fs::File, io::Read};
+use std::{borrow::Borrow, env, fs::File, io::Read};
 
 use axum::{
-    http::{HeaderMap},
+    http::HeaderMap,
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -107,7 +107,7 @@ async fn rpc_reg(headers: HeaderMap, Json(reg): Json<Reg>) -> Res<Json<User>> {
     Ok(Json(user))
 }
 
-fn rpc_dereg(Json(query): Json<Query>, headers: HeaderMap) {
+async fn rpc_dereg(headers: HeaderMap, Json(query): Json<Query>) {
     verify_domain_secret_from_headers(headers).unwrap();
     let con = &mut db::con().unwrap();
     user::del(&query, con).unwrap();
@@ -136,45 +136,46 @@ async fn rpc_login(Json(login): Json<Login>) -> Res<String> {
     Ok(rt)
 }
 
-fn rpc_logout(Json(rtdata): Json<RtData>) {
+async fn rpc_logout(Json(rtdata): Json<RtData>) {
     let con = &mut db::con().unwrap();
     user::del_rt(&rtdata.rt, con).unwrap();
 }
 
-fn rpc_current(Json(rtdata): Json<RtData>) -> Res<User> {
+async fn rpc_current(Json(rtdata): Json<RtData>) -> Res<Json<User>> {
     let con = &mut db::con().unwrap();
-    Ok(get_by_rt(&rtdata.rt, con)?.0)
+    Ok(Json(get_by_rt(&rtdata.rt, con)?.0))
 }
 
-fn rpc_access(Json(rtdata): Json<RtData>) -> Res<String> {
+async fn rpc_access(Json(rtdata): Json<RtData>) -> Res<String> {
     let rt = rtdata.rt;
     let claims = verify_rt(&rt).unwrap();
     let con = &mut db::con().unwrap();
     let user = get_by_id(claims.user_id, con).unwrap();
     if user.rt != Some(rt) {
-        return err::res_msg(
-            "no such refresh token for user",
-        );
+        return err::res_msg("no such refresh token for user");
     }
     // we don't store access tokens since they intended to be short-lived
     Ok(create_at(claims.user_id).unwrap())
 }
 
-fn rpc_get_user_changes(
+async fn rpc_get_user_changes(
     headers: HeaderMap,
-    Json(get_changes): Json<GetChanges>
-) -> Res<Vec<UserChange>> {
+    Json(get_changes): Json<GetChanges>,
+) -> Res<Vec<Json<UserChange>>> {
     verify_domain_secret_from_headers(headers)?;
     let con = &mut db::con().unwrap();
-    user_change::get_many(get_changes.from, con)
+    let changes = user_change::get_many(get_changes.from, con).unwrap();
+    let mut json_changes: Vec<Json<UserChange>> = vec![];
+    for change in changes {
+        json_changes.push(Json(change));
+    }
+    Ok(json_changes)
 }
 
 fn verify_domain_secret_from_headers(headers: HeaderMap) -> Res<()> {
     match headers.get("domain_secret") {
         Some(secret) => {
-            if secret.to_str().unwrap()
-                != APPRC.domain.secret
-            {
+            if secret.to_str().unwrap() != APPRC.domain.secret {
                 return err::res_msg("invalid secret");
             }
         }
@@ -182,7 +183,6 @@ fn verify_domain_secret_from_headers(headers: HeaderMap) -> Res<()> {
     }
     Ok(())
 }
-
 
 #[tokio::main]
 async fn main() {
@@ -192,11 +192,15 @@ async fn main() {
 
     info!("start server");
     let app = Router::new()
-        // .route(
-        //     "/rpc/login",
-        //     post(rpc_login)
-        // )
-        .route("/rpc/login", post(rpc_reg));
+        .route("/rpc/login", post(rpc_login))
+        .route("/rpc/logout", post(rpc_logout))
+        .route("/rpc/current", post(rpc_current))
+        .route("/rpc/access", post(rpc_access))
+
+        // domain-only
+        .route("/rpc/reg", post(rpc_reg))
+        .route("/rpc/dereg", post(rpc_dereg))
+        .route("/rpc/get_user_changes", post(rpc_get_user_changes));
     let listener =
         tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
