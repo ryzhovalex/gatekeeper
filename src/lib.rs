@@ -28,8 +28,8 @@ mod ryz;
 mod schema;
 mod sql;
 mod token;
-mod user;
-mod user_change;
+pub mod user;
+pub mod user_change;
 
 lazy_static::lazy_static! {
     static ref APPRC: Apprc = collect_apprc();

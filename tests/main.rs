@@ -1,38 +1,26 @@
 use std::collections::HashMap;
 
-use corund_lib::get_router;
+use corund_lib::{get_router, user::User};
 use axum_test::TestServer;
 use serde::{Deserialize, Serialize};
 static URL: &str = "http://localhost:3000/rpc";
-
-#[derive(Serialize, Deserialize)]
-pub struct User {
-    pub id: i32,
-    pub username: String,
-    pub firstname: Option<String>,
-    pub patronym: Option<String>,
-    pub surname: Option<String>,
-    pub rt: Option<String>,
-}
 
 fn new_test_server() -> TestServer {
     TestServer::new(get_router()).unwrap()
 }
 
-#[test]
-fn login_std_ok() {
+#[tokio::test]
+async fn login_std_ok() {
     let server = new_test_server();
-    let user: User = client
-        .post(URL.to_string() + "/server/reg")
+    let user: User = server
+        .post((URL.to_string() + "/server/reg").as_str())
         .json(&HashMap::from([
             ("username", "hello"),
             ("password", "1234"),
         ]))
-        .header("domain_secret", "stackunderflow")
-        .send()
-        .unwrap()
-        .json()
-        .unwrap();
+        .add_header("domain_secret", "stackunderflow")
+        .await
+        .json();
 
     assert_eq!(user.id, 1);
     assert_eq!(user.username, "hello");
