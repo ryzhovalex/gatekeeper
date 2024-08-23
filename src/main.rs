@@ -161,15 +161,11 @@ async fn rpc_access(Json(rtdata): Json<RtData>) -> Res<String> {
 async fn rpc_get_user_changes(
     headers: HeaderMap,
     Json(get_changes): Json<GetChanges>,
-) -> Res<Vec<Json<UserChange>>> {
+) -> Res<Json<Vec<UserChange>>> {
     verify_domain_secret_from_headers(headers)?;
     let con = &mut db::con().unwrap();
     let changes = user_change::get_many(get_changes.from, con).unwrap();
-    let mut json_changes: Vec<Json<UserChange>> = vec![];
-    for change in changes {
-        json_changes.push(Json(change));
-    }
-    Ok(json_changes)
+    Ok(Json(changes))
 }
 
 fn verify_domain_secret_from_headers(headers: HeaderMap) -> Res<()> {
