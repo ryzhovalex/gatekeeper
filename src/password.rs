@@ -1,7 +1,8 @@
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+    password_hash::{PasswordHasher, SaltString},
     Argon2, PasswordHash, PasswordVerifier,
 };
+use rand_core::OsRng;
 
 use crate::ryz::res::Res;
 
