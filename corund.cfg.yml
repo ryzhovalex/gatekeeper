@@ -1,5 +1,15 @@
-sql:
-  url: postgres://postgres:postgres@localhost:9005/corund_test
-domain:
-  secret: stackunderflow
-
+prod:
+  sql:
+    url: FILL
+  domain:
+    secret: stackunderflow
+dev:
+  sql:
+    url: postgres://postgres:postgres@localhost:9005/corund_test
+  domain:
+    secret: bittersprings
+test:
+  sql:
+    url: "sqlite://:memory:"
+  domain:
+    secret: backtomegaton

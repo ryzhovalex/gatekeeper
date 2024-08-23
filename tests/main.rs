@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use corund_lib::{get_router, user::User};
 use axum_test::TestServer;
+use corund_lib::{get_router, user::User};
 
 static URL: &str = "http://localhost:3000/rpc";
 

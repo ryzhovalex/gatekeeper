@@ -4,10 +4,10 @@ rustflags := if os() == "windows" { "-L ~/.bin" } else { "/usr/bin" }
 check: lint test
 
 test:
-	cargo test
+	@ CORUND_MODE=test cargo test
 
 lint:
-	@cargo fmt
+	@ cargo fmt
 
 run *flags="":
-	@RUSTFLAGS="{{rustflags}}" cargo run -q -- {{flags}}
+	@ CORUND_MODE=dev RUSTFLAGS="{{rustflags}}" cargo run -q -- {{flags}}

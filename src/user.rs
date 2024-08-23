@@ -6,12 +6,10 @@ use crate::{
     db::{Con, Id},
     password::hash_password,
     quco::Collection,
-    ryz::{
-        query::Query,
-        res::Res,
-    },
+    ryz::{query::Query, res::Res},
     schema,
-    user_change::{self, ChangeAction, NewUserChange}, InsertReg, Reg,
+    user_change::{self, ChangeAction, NewUserChange},
+    InsertReg, Reg,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -90,7 +88,10 @@ pub fn del(sq: &Query, con: &mut Con) -> Res<()> {
         q = q.filter(schema::appuser::username.eq(val));
     }
 
-    let id = q.returning(schema::appuser::id).get_result::<Id>(con).unwrap();
+    let id = q
+        .returning(schema::appuser::id)
+        .get_result::<Id>(con)
+        .unwrap();
 
     user_change::new(
         &NewUserChange {

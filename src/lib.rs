@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read};
+use std::{env::var, fs::File, io::Read};
 
 use axum::{
     http::HeaderMap,
@@ -9,6 +9,7 @@ use axum::{
 use diesel::prelude::Insertable;
 use password::check_password;
 use ryz::{
+    dict::dict,
     err::{self, Error},
     path,
     query::Query,
@@ -31,15 +32,25 @@ pub mod user;
 pub mod user_change;
 
 lazy_static::lazy_static! {
-    static ref APPRC: Apprc = collect_apprc();
+    static ref APPRC: Apprc = get_apprc();
 }
 
-fn collect_apprc() -> Apprc {
+fn get_apprc() -> Apprc {
     let mut file =
         File::open(path::cwd().unwrap().join("corund.cfg.yml")).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
-    return serde_yml::from_str(&content).unwrap();
+    let mut mode_to_apprc: dict<String, Apprc> =
+        serde_yml::from_str(&content).unwrap();
+    let mode = get_mode();
+    mode_to_apprc.remove(&mode).unwrap()
+}
+
+fn get_mode() -> String {
+    return match var("CORUND_MODE") {
+        Err(_) => "prod".to_string(),
+        Ok(mode) => mode,
+    };
 }
 
 #[derive(Debug, Deserialize)]
@@ -185,7 +196,6 @@ pub fn get_router() -> Router {
         .route("/rpc/logout", post(rpc_logout))
         .route("/rpc/current", post(rpc_current))
         .route("/rpc/access", post(rpc_access))
-
         // domain-only
         .route("/rpc/server/reg", post(rpc_reg))
         .route("/rpc/server/dereg", post(rpc_dereg))
