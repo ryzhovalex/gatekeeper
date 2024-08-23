@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use axum_test::TestServer;
-use corund_lib::{get_router, user::User};
+use corund_lib::{db::truncate_tables_if_allowed, get_router, user::User};
 
 static URL: &str = "http://localhost:3000/rpc";
 
@@ -11,6 +11,7 @@ fn new_test_server() -> TestServer {
 
 #[tokio::test]
 async fn login_std_ok() {
+    truncate_tables_if_allowed();
     let server = new_test_server();
     let response = server
         .post((URL.to_string() + "/server/reg").as_str())
@@ -18,8 +19,9 @@ async fn login_std_ok() {
             ("username", "hello"),
             ("password", "1234"),
         ]))
-        .add_header("domain_secret", "stackunderflow")
+        .add_header("domain_secret", "backtomegaton")
         .await;
+    dbg!(response.status_code());
     let user: User = response.json();
 
     assert_eq!(user.id, 1);

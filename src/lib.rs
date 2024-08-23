@@ -1,12 +1,9 @@
-use std::{env::var, fs::File, io::Read};
+use std::{borrow::Borrow, env::var, fs::File, io::Read};
 
 use axum::{
-    http::HeaderMap,
-    response::{IntoResponse, Response},
-    routing::post,
-    Json, Router,
+    body::to_bytes, extract::Request, http::{request, HeaderMap}, middleware::{self, Next}, response::{IntoResponse, Response}, routing::post, Json, Router
 };
-use diesel::prelude::Insertable;
+use diesel::{prelude::Insertable, IntoSql};
 use password::check_password;
 use ryz::{
     dict::dict,
@@ -21,7 +18,7 @@ use token::{create_at, verify_rt};
 use user::{get_by_id, get_by_rt, User};
 use user_change::UserChange;
 
-mod db;
+pub mod db;
 mod password;
 mod quco;
 mod ryz;
@@ -67,6 +64,7 @@ struct DomainCfg {
 #[derive(Debug, Deserialize)]
 struct SqlCfg {
     url: String,
+    is_cleaning_allowed: bool,
 }
 
 #[derive(Deserialize)]
@@ -102,6 +100,15 @@ pub struct InsertReg {
 #[derive(Deserialize)]
 struct GetChanges {
     from: Time,
+}
+
+async fn err_middleware(req: Request, next: Next) -> Response {
+    let res = next.run(req).await;
+
+    // TODO: handle status codes for errs somehow without knowing response
+    //       body type... don't even know how, for now
+
+    res
 }
 
 impl IntoResponse for Error {
@@ -200,4 +207,5 @@ pub fn get_router() -> Router {
         .route("/rpc/server/reg", post(rpc_reg))
         .route("/rpc/server/dereg", post(rpc_dereg))
         .route("/rpc/server/get_user_changes", post(rpc_get_user_changes))
+        .layer(middleware::from_fn(err_middleware))
 }

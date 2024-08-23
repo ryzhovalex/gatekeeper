@@ -5,7 +5,7 @@ use crate::{
     },
     Apprc, SqlCfg, APPRC,
 };
-use diesel::{Connection, PgConnection};
+use diesel::{connection::SimpleConnection, Connection, PgConnection};
 
 pub type Con = PgConnection;
 
@@ -17,4 +17,17 @@ pub fn con() -> Res<PgConnection> {
     let cfg = &APPRC.sql;
     Ok(PgConnection::establish(&cfg.url)
         .unwrap_or_else(|_| panic!("cannot connect to db")))
+}
+
+pub fn truncate_tables_if_allowed() {
+    if !APPRC.sql.is_cleaning_allowed {
+        return;
+    }
+    let _con = &mut con().unwrap();
+    _con.batch_execute(
+        "
+        TRUNCATE user_change, appuser RESTART IDENTITY;
+    ",
+    )
+    .unwrap();
 }

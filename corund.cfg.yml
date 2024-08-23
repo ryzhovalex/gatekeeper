@@ -1,15 +1,18 @@
 prod:
   sql:
     url: FILL
+    is_cleaning_allowed: false
   domain:
     secret: stackunderflow
 dev:
   sql:
-    url: postgres://postgres:postgres@localhost:9005/corund_test
+    url: postgres://postgres:postgres@localhost:9005/corund_dev
+    is_cleaning_allowed: true
   domain:
     secret: bittersprings
 test:
   sql:
-    url: "sqlite://:memory:"
+    url: postgres://postgres:postgres@localhost:9005/corund_test
+    is_cleaning_allowed: true
   domain:
     secret: backtomegaton
