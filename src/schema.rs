@@ -1,7 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    user (id) {
+    appuser (id) {
         id -> Int4,
         hpassword -> Varchar,
         username -> Varchar,
@@ -21,9 +21,9 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(user_change -> user (user_id));
+diesel::joinable!(user_change -> appuser (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    user,
+    appuser,
     user_change,
 );

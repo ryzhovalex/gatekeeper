@@ -25,7 +25,7 @@ pub struct User {
 }
 
 #[derive(Queryable, Selectable)]
-#[diesel(table_name = schema::user)]
+#[diesel(table_name = schema::appuser)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct UserTable {
     pub id: Id,
@@ -52,7 +52,7 @@ impl Collection<User> for UserTable {
 
 pub fn new(reg: &Reg, con: &mut Con) -> Res<User> {
     let hpassword = hash_password(&reg.password).unwrap();
-    let user: UserTable = diesel::insert_into(schema::user::table)
+    let user: UserTable = diesel::insert_into(schema::appuser::table)
         .values(&InsertReg {
             username: reg.username.to_owned(),
             hpassword: hpassword.to_owned(),
@@ -79,18 +79,18 @@ pub fn new(reg: &Reg, con: &mut Con) -> Res<User> {
 pub fn del(sq: &Query, con: &mut Con) -> Res<()> {
     let id = sq.get("id");
     let username = sq.get("username");
-    let mut q = diesel::delete(schema::user::table).into_boxed();
+    let mut q = diesel::delete(schema::appuser::table).into_boxed();
     if id.is_some() {
         let val = serde_json::from_value::<Id>(id.unwrap().clone()).unwrap();
-        q = q.filter(schema::user::id.eq(val));
+        q = q.filter(schema::appuser::id.eq(val));
     }
     if username.is_some() {
         let val = serde_json::from_value::<String>(username.unwrap().clone())
             .unwrap();
-        q = q.filter(schema::user::username.eq(val));
+        q = q.filter(schema::appuser::username.eq(val));
     }
 
-    let id = q.returning(schema::user::id).get_result::<Id>(con).unwrap();
+    let id = q.returning(schema::appuser::id).get_result::<Id>(con).unwrap();
 
     user_change::new(
         &NewUserChange {
@@ -105,7 +105,7 @@ pub fn del(sq: &Query, con: &mut Con) -> Res<()> {
 }
 
 pub fn get_by_id(id: i32, con: &mut Con) -> Res<User> {
-    Ok(schema::user::table
+    Ok(schema::appuser::table
         .find(id)
         .select(UserTable::as_select())
         .first(con)
@@ -117,8 +117,8 @@ pub fn get_by_username(
     username: &String,
     con: &mut Con,
 ) -> Res<(User, String)> {
-    let user: UserTable = schema::user::table
-        .filter(schema::user::username.eq(username))
+    let user: UserTable = schema::appuser::table
+        .filter(schema::appuser::username.eq(username))
         .select(UserTable::as_select())
         .first(con)
         .unwrap();
@@ -126,8 +126,8 @@ pub fn get_by_username(
 }
 
 pub fn get_by_rt(rt: &String, con: &mut Con) -> Res<(User, String)> {
-    let user: UserTable = schema::user::table
-        .filter(schema::user::rt.eq(rt))
+    let user: UserTable = schema::appuser::table
+        .filter(schema::appuser::rt.eq(rt))
         .select(UserTable::as_select())
         .first(con)
         .unwrap();
@@ -135,8 +135,8 @@ pub fn get_by_rt(rt: &String, con: &mut Con) -> Res<(User, String)> {
 }
 
 pub fn del_rt(rt: &String, con: &mut Con) -> Res<()> {
-    diesel::update(schema::user::table.filter(schema::user::rt.eq(rt)))
-        .set(schema::user::rt.eq::<Option<String>>(None))
+    diesel::update(schema::appuser::table.filter(schema::appuser::rt.eq(rt)))
+        .set(schema::appuser::rt.eq::<Option<String>>(None))
         .execute(con)
         .unwrap();
     Ok(())
@@ -148,17 +148,17 @@ pub fn set_rt_for_username(
     con: &mut Con,
 ) -> Res<()> {
     diesel::update(
-        schema::user::table.filter(schema::user::username.eq(username)),
+        schema::appuser::table.filter(schema::appuser::username.eq(username)),
     )
-    .set(schema::user::rt.eq::<Option<String>>(Some(rt.to_owned())))
+    .set(schema::appuser::rt.eq::<Option<String>>(Some(rt.to_owned())))
     .execute(con)
     .unwrap();
     Ok(())
 }
 
 pub fn get_many_as_ids(con: &mut Con) -> Res<Vec<Id>> {
-    let ids = schema::user::table
-        .select(schema::user::id)
+    let ids = schema::appuser::table
+        .select(schema::appuser::id)
         .get_results::<Id>(con)
         .unwrap();
     Ok(ids)

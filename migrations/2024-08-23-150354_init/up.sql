@@ -1,5 +1,5 @@
 -- Your SQL goes here
-CREATE TABLE "user"(
+CREATE TABLE "appuser"(
 	"id" SERIAL PRIMARY KEY,
 	"hpassword" VARCHAR NOT NULL,
 	"username" VARCHAR NOT NULL,
@@ -13,6 +13,6 @@ CREATE TABLE "user_change"(
 	"created" DOUBLE PRECISION NOT NULL,
 	"action" VARCHAR NOT NULL,
 	"user_id" SERIAL NOT NULL,
-	FOREIGN KEY ("user_id") REFERENCES "user"("id")
+	FOREIGN KEY ("user_id") REFERENCES "appuser"("id")
 );
 

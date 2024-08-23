@@ -6,7 +6,6 @@ use axum::{
     routing::post,
     Json, Router,
 };
-use db::Id;
 use diesel::prelude::Insertable;
 use password::check_password;
 use ryz::{
@@ -80,7 +79,7 @@ pub struct Reg {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name=schema::user)]
+#[diesel(table_name=schema::appuser)]
 pub struct InsertReg {
     pub username: String,
     pub hpassword: String,
