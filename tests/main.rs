@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use corund_lib::{get_router, user::User};
 use axum_test::TestServer;
-use serde::{Deserialize, Serialize};
+
 static URL: &str = "http://localhost:3000/rpc";
 
 fn new_test_server() -> TestServer {

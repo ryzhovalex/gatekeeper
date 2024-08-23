@@ -1,5 +1,3 @@
-use std::fmt::{Debug, Display};
-
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -9,13 +7,11 @@ use crate::{
     password::hash_password,
     quco::Collection,
     ryz::{
-        err::{self, res, Error},
         query::Query,
         res::Res,
     },
     schema,
-    user_change::{self, ChangeAction, NewUserChange},
-    Apprc, InsertReg, Reg,
+    user_change::{self, ChangeAction, NewUserChange}, InsertReg, Reg,
 };
 
 #[derive(Serialize, Deserialize)]

@@ -3,7 +3,7 @@ use std::{fs::File, io::Read};
 use axum::{
     http::HeaderMap,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::post,
     Json, Router,
 };
 use db::Id;
@@ -16,7 +16,7 @@ use ryz::{
     res::Res,
     time::Time,
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use token::{create_at, verify_rt};
 use user::{get_by_id, get_by_rt, User};
 use user_change::UserChange;
@@ -71,7 +71,7 @@ struct RtData {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Reg {
+pub struct Reg {
     pub username: String,
     pub password: String,
     pub firstname: Option<String>,
