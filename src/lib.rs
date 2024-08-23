@@ -6,6 +6,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use db::Id;
 use diesel::prelude::Insertable;
 use password::check_password;
 use ryz::{

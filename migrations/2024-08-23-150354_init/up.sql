@@ -1,6 +1,6 @@
 -- Your SQL goes here
 CREATE TABLE "user"(
-	"id" INTEGER NOT NULL PRIMARY KEY,
+	"id" SERIAL PRIMARY KEY,
 	"hpassword" VARCHAR NOT NULL,
 	"username" VARCHAR NOT NULL,
 	"firstname" VARCHAR,
@@ -9,10 +9,10 @@ CREATE TABLE "user"(
 	"rt" VARCHAR
 );
 CREATE TABLE "user_change"(
-	"id" INTEGER NOT NULL PRIMARY KEY,
+	"id" SERIAL PRIMARY KEY,
 	"created" DOUBLE PRECISION NOT NULL,
 	"action" VARCHAR NOT NULL,
-	"user_id" INTEGER NOT NULL,
+	"user_id" SERIAL NOT NULL,
 	FOREIGN KEY ("user_id") REFERENCES "user"("id")
 );
 
