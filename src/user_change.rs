@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    db::{self, Con, Id},
+    db::{Con, Id},
     quco::Collection,
     ryz::{
         enm::StrEnum,
@@ -10,7 +10,7 @@ use crate::{
         res::Res,
         time::{utc, Time},
     },
-    schema, sql,
+    schema,
 };
 
 #[derive(Serialize, Deserialize, Debug)]

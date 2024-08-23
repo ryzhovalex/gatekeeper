@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, env, fs::File, io::Read};
+use std::{fs::File, io::Read};
 
 use axum::{
     http::HeaderMap,
@@ -7,7 +7,6 @@ use axum::{
     Json, Router,
 };
 use diesel::prelude::Insertable;
-use log::info;
 use password::check_password;
 use ryz::{
     err::{self, Error},
@@ -188,7 +187,7 @@ pub fn get_router() -> Router {
         .route("/rpc/access", post(rpc_access))
 
         // domain-only
-        .route("/rpc/reg", post(rpc_reg))
-        .route("/rpc/dereg", post(rpc_dereg))
-        .route("/rpc/get_user_changes", post(rpc_get_user_changes))
+        .route("/rpc/server/reg", post(rpc_reg))
+        .route("/rpc/server/dereg", post(rpc_dereg))
+        .route("/rpc/server/get_user_changes", post(rpc_get_user_changes))
 }

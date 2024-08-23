@@ -12,15 +12,15 @@ fn new_test_server() -> TestServer {
 #[tokio::test]
 async fn login_std_ok() {
     let server = new_test_server();
-    let user: User = server
+    let response = server
         .post((URL.to_string() + "/server/reg").as_str())
         .json(&HashMap::from([
             ("username", "hello"),
             ("password", "1234"),
         ]))
         .add_header("domain_secret", "stackunderflow")
-        .await
-        .json();
+        .await;
+    let user: User = response.json();
 
     assert_eq!(user.id, 1);
     assert_eq!(user.username, "hello");
