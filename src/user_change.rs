@@ -4,8 +4,13 @@ use serde::{Deserialize, Serialize};
 use crate::{
     db::{self, Con, Id},
     quco::Collection,
-    ryz::{enm::StrEnum, err, res::Res, time::{utc, Time}},
-    schema, sql
+    ryz::{
+        enm::StrEnum,
+        err,
+        res::Res,
+        time::{utc, Time},
+    },
+    schema, sql,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -88,14 +93,15 @@ pub fn get_many(from: Time, con: &mut Con) -> Res<Vec<UserChange>> {
 }
 
 pub fn new(data: &NewUserChange, con: &mut Con) -> Res<UserChange> {
-    let change: UserChangeTable = diesel::insert_into(schema::user_change::table)
-        .values(&InsertNewUserChange {
-            user_id: data.user_id,
-            created: utc(),
-            action: data.action.to_str().to_string()
-        })
-        .returning(UserChangeTable::as_returning())
-        .get_result(con)
-        .unwrap();
+    let change: UserChangeTable =
+        diesel::insert_into(schema::user_change::table)
+            .values(&InsertNewUserChange {
+                user_id: data.user_id,
+                created: utc(),
+                action: data.action.to_str().to_string(),
+            })
+            .returning(UserChangeTable::as_returning())
+            .get_result(con)
+            .unwrap();
     Ok(change.to_msg())
 }

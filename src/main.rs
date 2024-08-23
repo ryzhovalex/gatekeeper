@@ -2,7 +2,7 @@ use std::{env, fs::File, io::Read};
 
 use db::Con;
 use diesel::prelude::Insertable;
-use log::{info};
+use log::info;
 use password::check_password;
 use rouille::{Request, Response, ResponseBody};
 use ryz::{
@@ -37,7 +37,7 @@ struct Apprc {
 
 #[derive(Debug, Deserialize)]
 struct DomainCfg {
-    secret: String
+    secret: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,9 +149,7 @@ fn rpc_login(req: &&Request, apprc: &Apprc) -> Response {
 
 fn rpc_logout(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(logout) = rouille::input::json_input::<RtSignature>(req) else {
-        let err = err::Error::new_msg(
-            format!("invalid logout data").as_str(),
-        );
+        let err = err::Error::new_msg(format!("invalid logout data").as_str());
         return response_err(&err);
     };
     let con = &mut db::con(&apprc.sql).unwrap();
@@ -162,9 +160,8 @@ fn rpc_logout(req: &&Request, apprc: &Apprc) -> Response {
 fn rpc_current(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(rt_signature) = rouille::input::json_input::<RtSignature>(req)
     else {
-        let err = err::Error::new_msg(
-            format!("invalid rt signature").as_str(),
-        );
+        let err =
+            err::Error::new_msg(format!("invalid rt signature").as_str());
         return Response::json(&err);
     };
     let con = &mut db::con(&apprc.sql).unwrap();
@@ -181,9 +178,9 @@ where
     T: DeserializeOwned,
 {
     match rouille::input::json_input::<T>(req) {
-        Err(e) => Err(err::Error::new_msg(
-            format!("invalid req body").as_str(),
-        )),
+        Err(e) => {
+            Err(err::Error::new_msg(format!("invalid req body").as_str()))
+        }
         Ok(v) => Ok(v),
     }
 }
@@ -191,9 +188,8 @@ where
 fn rpc_access(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(rt_signature) = rouille::input::json_input::<RtSignature>(req)
     else {
-        let err = err::Error::new_msg(
-            format!("invalid rt signature").as_str(),
-        );
+        let err =
+            err::Error::new_msg(format!("invalid rt signature").as_str());
         return Response::json(&err);
     };
     let rt = rt_signature.rt;
@@ -209,7 +205,10 @@ fn rpc_access(req: &&Request, apprc: &Apprc) -> Response {
     Response::text(create_at(claims.user_id).unwrap())
 }
 
-fn rpc_get_user_changes(req: &&Request, apprc: &Apprc) -> Res<Vec<UserChange>> {
+fn rpc_get_user_changes(
+    req: &&Request,
+    apprc: &Apprc,
+) -> Res<Vec<UserChange>> {
     let body = parse::<GetChanges>(req)?;
     let con = &mut db::con(&apprc.sql).unwrap();
     user_change::get_many(body.from, con)
@@ -217,9 +216,7 @@ fn rpc_get_user_changes(req: &&Request, apprc: &Apprc) -> Res<Vec<UserChange>> {
 
 fn verify_domain_secret_from_header(req: &&Request, apprc: &Apprc) -> Res<()> {
     let Some(secret) = req.header("domain_secret") else {
-        return err::make_msg(
-            "can't get secret from header",
-        );
+        return err::make_msg("can't get secret from header");
     };
     if secret != apprc.domain.secret {
         return err::make_msg("invalid secret");

@@ -149,16 +149,21 @@ pub fn del_rt(rt: &String, con: &mut Con) -> Res<()> {
 pub fn set_rt_for_username(
     username: &String,
     rt: &String,
-    con: &mut Con
+    con: &mut Con,
 ) -> Res<()> {
-    diesel::update(schema::user::table.filter(schema::user::username.eq(username)))
-        .set(schema::user::rt.eq::<Option<String>>(Some(rt.to_owned())))
-        .execute(con)
-        .unwrap();
+    diesel::update(
+        schema::user::table.filter(schema::user::username.eq(username)),
+    )
+    .set(schema::user::rt.eq::<Option<String>>(Some(rt.to_owned())))
+    .execute(con)
+    .unwrap();
     Ok(())
 }
 
 pub fn get_many_as_ids(con: &mut Con) -> Res<Vec<Id>> {
-    let ids = schema::user::table.select(schema::user::id).get_results::<Id>(con).unwrap();
+    let ids = schema::user::table
+        .select(schema::user::id)
+        .get_results::<Id>(con)
+        .unwrap();
     Ok(ids)
 }
