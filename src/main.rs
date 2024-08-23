@@ -15,7 +15,7 @@ use ryz::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use token::{create_at, verify_rt};
-use user::{get_all_ids, get_by_id, get_by_rt, set_rt_for_username};
+use user::{get_many_as_ids, get_by_id, get_by_rt, set_rt_for_username};
 
 #[macro_use]
 extern crate rouille;
@@ -63,7 +63,7 @@ struct Reg {
 
 #[derive(Insertable)]
 #[diesel(table_name=schema::user)]
-pub struct InsertableReg {
+pub struct InsertReg {
     pub username: String,
     pub hpassword: String,
     pub firstname: Option<String>,
@@ -100,7 +100,7 @@ fn rpc_reg(req: &&Request, apprc: &Apprc) -> Response {
         ));
     };
     let con = &mut db::con(&apprc.sql).unwrap();
-    let user = user::new(&reg, &apprc, con).unwrap();
+    let user = user::new(&reg, con).unwrap();
     Response::json(&user)
 }
 
@@ -110,7 +110,8 @@ fn rpc_dereg(req: &&Request, apprc: &Apprc) -> Response {
             format!("invalid search data").as_str(),
         ));
     };
-    user::del_one(&sq, &apprc).unwrap();
+    let con = &mut db::con(&apprc.sql).unwrap();
+    user::del(&sq, con).unwrap();
     Response::empty_204()
 }
 
@@ -122,29 +123,19 @@ fn rpc_dereg(req: &&Request, apprc: &Apprc) -> Response {
 /// Returns refresh token.
 fn rpc_login(req: &&Request, apprc: &Apprc) -> Response {
     let Ok(login) = rouille::input::json_input::<Login>(req) else {
-        let err = err::Error::new(
-            Some("val_err"),
-            Some(format!("invalid login data").as_str()),
-        );
+        let err = err::Error::new_msg(format!("invalid login data").as_str());
         return response_err(&err);
     };
-    let Ok((user, hpassword)) =
-        user::get_by_username_with_hpassword(&login.username, &apprc)
+    let con = &mut db::con(&apprc.sql).unwrap();
+    let Ok((user, hpassword)) = user::get_by_username(&login.username, con)
     else {
-        let err = err::Error::new(
-            Some("auth_err"),
-            Some(
-                format!("invalid username {}", login.username.to_owned())
-                    .as_str(),
-            ),
+        let err = err::Error::new_msg(
+            format!("invalid username {}", login.username.to_owned()).as_str(),
         );
         return response_err(&err);
     };
     if !check_password(&login.password, &hpassword) {
-        return response_err(&Error::new(
-            Some("auth_err"),
-            Some("incorrect password"),
-        ));
+        return response_err(&Error::new_msg("incorrect password"));
     }
     let rt = token::create_rt(user.id).unwrap();
     user::set_rt_for_username(&login.username, &rt, &apprc).unwrap();
@@ -218,7 +209,7 @@ fn rpc_access(req: &&Request, apprc: &Apprc) -> Response {
 
 fn rpc_get_user_changes(req: &&Request, apprc: &Apprc) -> Res<Vec<Changes>> {
     let body = parse::<GetChanges>(req)?;
-    user_change::get(body.from, apprc)
+    user_change::get_many(body.from, apprc)
 }
 
 fn verify_domain_secret_from_header(req: &&Request, apprc: &Apprc) -> Res<()> {

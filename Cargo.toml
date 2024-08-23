@@ -12,7 +12,6 @@ diesel = { version = "2.2.2", features = ["postgres"] }
 hmac = "0.12.1"
 jwt = "0.16.0"
 log = "0.4.22"
-postgres = "0.19.8"
 rouille = "3.6.2"
 serde = "1.0.204"
 serde_json = "1.0.121"

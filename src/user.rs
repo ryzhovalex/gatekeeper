@@ -1,24 +1,21 @@
 use std::fmt::{Debug, Display};
 
 use diesel::prelude::*;
-use postgres::{Client, Row};
 use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::{
-    asrt,
-    db::{self, Con, Id},
+    db::{Con, Id},
     password::hash_password,
     quco::Collection,
     ryz::{
-        asrt,
         err::{self, make, Error},
         query::Query,
         res::Res,
     },
     schema,
     user_change::{self, ChangeAction, NewUserChange},
-    Apprc, InsertableReg, Reg,
+    Apprc, InsertReg, Reg,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -57,10 +54,10 @@ impl Collection<User> for UserTable {
     }
 }
 
-pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
+pub fn new(reg: &Reg, con: &mut Con) -> Res<User> {
     let hpassword = hash_password(&reg.password).unwrap();
     let user: UserTable = diesel::insert_into(schema::user::table)
-        .values(&InsertableReg {
+        .values(&InsertReg {
             username: reg.username.to_owned(),
             hpassword: hpassword.to_owned(),
             firstname: reg.firstname.to_owned(),
@@ -76,7 +73,6 @@ pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
             user_id: user.id,
             action: ChangeAction::New,
         },
-        apprc,
         con,
     )
     .unwrap();
@@ -84,7 +80,7 @@ pub fn new(reg: &Reg, apprc: &Apprc, con: &mut Con) -> Res<User> {
     Ok(user.to_msg())
 }
 
-pub fn del_one(sq: &Query, con: &mut Con) -> Res<()> {
+pub fn del(sq: &Query, con: &mut Con) -> Res<()> {
     let id = sq.get("id");
     let username = sq.get("username");
     let mut q = diesel::delete(schema::user::table).into_boxed();
@@ -121,59 +117,48 @@ pub fn get_by_id(id: i32, con: &mut Con) -> Res<User> {
         .to_msg())
 }
 
-pub fn get_by_username_with_hpassword(
+pub fn get_by_username(
     username: &String,
-    con: &mut Con
+    con: &mut Con,
 ) -> Res<(User, String)> {
-
-    let row = con
-        .query_one("SELECT * FROM appuser WHERE username = $1", &[&username])
+    let user: UserTable = schema::user::table
+        .filter(schema::user::username.eq(username))
+        .select(UserTable::as_select())
+        .first(con)
         .unwrap();
-
-    Ok((parse_row(&row).unwrap(), row.get("hpassword")))
+    Ok((user.to_msg(), user.hpassword))
 }
 
-pub fn get_by_rt(rt: &String, apprc: &Apprc) -> Res<(User, String)> {
-    let mut con = db::con(&apprc.sql).unwrap();
-
-    let row = con
-        .query_one("SELECT * FROM appuser WHERE rt = $1", &[&rt])
+pub fn get_by_rt(rt: &String, con: &mut Con) -> Res<(User, String)> {
+    let user: UserTable = schema::user::table
+        .filter(schema::user::rt.eq(rt))
+        .select(UserTable::as_select())
+        .first(con)
         .unwrap();
-
-    Ok((parse_row(&row).unwrap(), row.get("hpassword")))
+    Ok((user.to_msg(), user.hpassword))
 }
 
-pub fn del_rt(rt: &String, apprc: &Apprc) -> Res<()> {
-    let mut con = db::con(&apprc.sql).unwrap();
-
-    con.execute("UPDATE appuser SET rt = NULL WHERE rt = $1", &[&rt])
+pub fn del_rt(rt: &String, con: &mut Con) -> Res<()> {
+    diesel::update(schema::user::table.filter(schema::user::rt.eq(rt)))
+        .set(schema::user::rt.eq::<Option<String>>(None))
+        .execute(con)
         .unwrap();
-
     Ok(())
 }
 
 pub fn set_rt_for_username(
     username: &String,
     rt: &String,
-    apprc: &Apprc,
+    con: &mut Con
 ) -> Res<()> {
-    let mut con = db::con(&apprc.sql).unwrap();
-
-    con.execute(
-        "UPDATE appuser SET rt = $1 WHERE username = $2",
-        &[&rt, &username],
-    )
-    .unwrap();
-
+    diesel::update(schema::user::table.filter(schema::user::username.eq(username)))
+        .set(schema::user::rt.eq::<Option<String>>(Some(rt.to_owned())))
+        .execute(con)
+        .unwrap();
     Ok(())
 }
 
-pub fn get_all_ids(apprc: &Apprc) -> Res<Vec<Id>> {
-    let mut con = db::con(&apprc.sql).unwrap();
-    let rows = con.query("SELECT id FROM appuser", &[]).unwrap();
-    let mut ids: Vec<Id> = Vec::new();
-    for r in rows {
-        ids.push(r.get("id"));
-    }
+pub fn get_many_as_ids(con: &mut Con) -> Res<Vec<Id>> {
+    let ids = schema::user::table.select(schema::user::id).get_results::<Id>(con).unwrap();
     Ok(ids)
 }

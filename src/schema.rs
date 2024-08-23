@@ -13,7 +13,7 @@ diesel::table! {
 diesel::table! {
     user_change {
         id -> Integer,
-        time -> Double,
+        created -> Double,
         action -> VarChar,
         user_id -> Integer
     }
