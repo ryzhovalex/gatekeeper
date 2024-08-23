@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use corund_lib::get_router;
+use axum_test::TestServer;
 use serde::{Deserialize, Serialize};
 static URL: &str = "http://localhost:3000/rpc";
 
@@ -13,9 +15,13 @@ pub struct User {
     pub rt: Option<String>,
 }
 
+fn new_test_server() -> TestServer {
+    TestServer::new(get_router()).unwrap()
+}
+
 #[test]
 fn login_std_ok() {
-    let client = reqwest::blocking::Client::new();
+    let server = new_test_server();
     let user: User = client
         .post(URL.to_string() + "/server/reg")
         .json(&HashMap::from([
