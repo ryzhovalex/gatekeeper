@@ -1,5 +1,5 @@
 use crate::err::Error;
-use crate::ryz::err::make;
+use crate::ryz::err::res;
 use crate::ryz::time::{self, utc, Time};
 use crate::{ryz::res::Res, ryz::time::delta};
 use hmac::{Hmac, Mac};
@@ -35,7 +35,7 @@ pub trait Expire {
         let created = *&self.get_created().unwrap();
         let exp = created + delta;
         if exp > utc() {
-            return make("exp_err", "expired token");
+            return res("exp_err", "expired token");
         }
         Ok(exp)
     }

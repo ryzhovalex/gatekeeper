@@ -9,7 +9,7 @@ use crate::{
     password::hash_password,
     quco::Collection,
     ryz::{
-        err::{self, make, Error},
+        err::{self, res, Error},
         query::Query,
         res::Res,
     },

@@ -40,18 +40,18 @@ impl Error {
     }
 }
 
-pub fn make_default<T>() -> Res<T> {
+pub fn res_default<T>() -> Res<T> {
     Err(Error::default())
 }
 
-pub fn make_code<T>(code: &str) -> Res<T> {
+pub fn res_code<T>(code: &str) -> Res<T> {
     Err(Error::new_code(code))
 }
 
-pub fn make_msg<T>(msg: &str) -> Res<T> {
+pub fn res_msg<T>(msg: &str) -> Res<T> {
     Err(Error::new_msg(msg))
 }
 
-pub fn make<T>(code: &str, msg: &str) -> Res<T> {
+pub fn res<T>(code: &str, msg: &str) -> Res<T> {
     Err(Error::new(code, msg))
 }

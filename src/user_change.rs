@@ -31,7 +31,7 @@ impl StrEnum for ChangeAction {
         match s {
             "new" => Ok(ChangeAction::New),
             "del" => Ok(ChangeAction::Del),
-            _ => err::make_default(),
+            _ => err::res_default(),
         }
     }
 }

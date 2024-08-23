@@ -1,6 +1,8 @@
 set shell := ["nu", "-c"]
 rustflags := if os() == "windows" { "-L ~/.bin" } else { "/usr/bin" }
 
+check: lint test
+
 test:
 	cargo test
 

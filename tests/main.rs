@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use reqwest;
 use serde::{Deserialize, Serialize};
 static URL: &str = "http://localhost:3000/rpc";
 
