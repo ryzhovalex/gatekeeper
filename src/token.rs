@@ -33,10 +33,7 @@ pub trait Expire {
     fn check_exp(&self, delta: Time) -> Res<Time> {
         let created = *&self.get_created().unwrap();
         let exp = created + delta;
-        dbg!(created);
-        dbg!(exp);
-        dbg!(delta);
-        if exp > utc() {
+        if exp < utc() {
             return res("exp_err", "expired token");
         }
         Ok(exp)
