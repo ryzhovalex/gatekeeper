@@ -13,4 +13,4 @@ lint:
 	@ cargo fmt
 
 run *flags="":
-	@ CORUND_MODE=dev RUSTFLAGS="{{rustflags}}" cargo run -q -- {{flags}}
+	@ CORUND_MODE=dev RUSTFLAGS="{{rustflags}}" cargo run -- {{flags}}
