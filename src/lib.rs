@@ -11,11 +11,11 @@ use axum::{
 };
 use diesel::{prelude::Insertable, IntoSql};
 use password::check_password;
+use quco::Query;
 use ryz::{
     dict::dict,
     err::{self, Error},
     path,
-    query::Query,
     res::Res,
     time::Time,
 };
@@ -26,7 +26,7 @@ use user_change::UserChange;
 
 pub mod db;
 mod password;
-mod quco;
+pub mod quco;
 pub mod ryz;
 mod schema;
 mod sql;

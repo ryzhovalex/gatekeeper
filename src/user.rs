@@ -5,8 +5,8 @@ use serde_json;
 use crate::{
     db::{Con, Id},
     password::hash_password,
-    quco::Collection,
-    ryz::{err, query::Query, res::Res},
+    quco::{Collection, Query},
+    ryz::{err, res::Res},
     schema,
     user_change::{self, ChangeAction, NewUserChange},
     InsertReg, Reg,
@@ -78,7 +78,7 @@ pub fn new(reg: &Reg, con: &mut Con) -> Res<User> {
 }
 
 /// Instead of deletion, users are archived, their usernames are changed to
-/// be archive::<username> and they are no more accessible. This needs to be
+/// be `archive::<username>` and they are no more accessible. This needs to be
 /// done due to user_change synchronization needs, the changes will still point
 /// to the archived user.
 pub fn del(sq: &Query, con: &mut Con) -> Res<()> {
