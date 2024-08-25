@@ -2,11 +2,9 @@ use std::collections::HashMap;
 
 use axum_test::TestServer;
 use corund_lib::{
-    db::{self, truncate_tables_if_allowed},
-    get_router,
-    user::{self, User},
-    Reg,
+    db::{self, truncate_tables_if_allowed}, get_mode, get_router, ryz::time::utc, user::{self, User}, user_change::{self, ChangeAction}, Reg
 };
+use diesel::Connection;
 
 static URL: &str = "http://localhost:3000/rpc";
 static DOMAIN_SECRET: &str = "backtomegaton";
@@ -15,6 +13,7 @@ fn new_test_server() -> TestServer {
     TestServer::new(get_router()).unwrap()
 }
 
+// WARN: no parallel testing is supported for now
 #[tokio::test]
 async fn reg_std_ok() {
     truncate_tables_if_allowed();
@@ -41,9 +40,10 @@ async fn reg_std_ok() {
 #[tokio::test]
 async fn dereg_std_ok() {
     truncate_tables_if_allowed();
+    let test_start_time = utc();
 
     let con = &mut db::con().unwrap();
-    user::new(
+    let user = user::new(
         &Reg {
             username: "hello".to_string(),
             password: "1234".to_string(),
@@ -67,4 +67,11 @@ async fn dereg_std_ok() {
         user::get_many_as_ids(con).unwrap().len() == 0,
         "must be no users"
     );
+
+    let changes = user_change::get_many(test_start_time, con).unwrap();
+    assert!(changes.len() == 2, "must retain new and del user changes");
+    assert!(changes[0].user_id == user.id);
+    assert!(changes[0].action == ChangeAction::New);
+    assert!(changes[1].user_id == user.id);
+    assert!(changes[1].action == ChangeAction::Del);
 }

@@ -12,7 +12,7 @@ use crate::{
     InsertReg, Reg,
 };
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     pub id: Id,
     pub username: String,

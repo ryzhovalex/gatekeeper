@@ -27,7 +27,7 @@ use user_change::UserChange;
 pub mod db;
 mod password;
 mod quco;
-mod ryz;
+pub mod ryz;
 mod schema;
 mod sql;
 mod token;
@@ -49,7 +49,7 @@ fn get_apprc() -> Apprc {
     mode_to_apprc.remove(&mode).unwrap()
 }
 
-fn get_mode() -> String {
+pub fn get_mode() -> String {
     return match var("CORUND_MODE") {
         Err(_) => "prod".to_string(),
         Ok(mode) => mode,
@@ -194,7 +194,7 @@ async fn rpc_get_user_changes(
 fn verify_domain_secret_from_headers(headers: HeaderMap) -> Res<()> {
     match headers.get("domain_secret") {
         Some(secret) => {
-            if secret.to_str().unwrap() != APPRC.domain.secret {
+            if secret.to_str().unwrap() != &APPRC.domain.secret {
                 return err::res_msg("invalid secret");
             }
         }
