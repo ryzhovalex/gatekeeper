@@ -1,7 +1,13 @@
 use std::{borrow::Borrow, env::var, fs::File, io::Read};
 
 use axum::{
-    body::to_bytes, extract::Request, http::{request, HeaderMap}, middleware::{self, Next}, response::{IntoResponse, Response}, routing::post, Json, Router
+    body::to_bytes,
+    extract::Request,
+    http::{request, HeaderMap},
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
+    routing::post,
+    Json, Router,
 };
 use diesel::{prelude::Insertable, IntoSql};
 use password::check_password;

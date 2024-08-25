@@ -6,7 +6,7 @@ use crate::{
     db::{Con, Id},
     password::hash_password,
     quco::Collection,
-    ryz::{query::Query, res::Res},
+    ryz::{err, query::Query, res::Res},
     schema,
     user_change::{self, ChangeAction, NewUserChange},
     InsertReg, Reg,
@@ -49,6 +49,9 @@ impl Collection<User> for UserTable {
 }
 
 pub fn new(reg: &Reg, con: &mut Con) -> Res<User> {
+    if reg.username.starts_with("archive::") {
+        return err::res_msg("cannot accept archived usernames");
+    }
     let hpassword = hash_password(&reg.password).unwrap();
     let user: UserTable = diesel::insert_into(schema::appuser::table)
         .values(&InsertReg {
@@ -74,21 +77,37 @@ pub fn new(reg: &Reg, con: &mut Con) -> Res<User> {
     Ok(user.to_msg())
 }
 
+/// Instead of deletion, users are archived, their usernames are changed to
+/// be archive::<username> and they are no more accessible. This needs to be
+/// done due to user_change synchronization needs, the changes will still point
+/// to the archived user.
 pub fn del(sq: &Query, con: &mut Con) -> Res<()> {
     let id = sq.get("id");
     let username = sq.get("username");
-    let mut q = diesel::delete(schema::appuser::table).into_boxed();
+    let mut q = schema::appuser::table.into_boxed();
     if id.is_some() {
         let val = serde_json::from_value::<Id>(id.unwrap().clone()).unwrap();
         q = q.filter(schema::appuser::id.eq(val));
     }
     if username.is_some() {
-        let val = serde_json::from_value::<String>(username.unwrap().clone())
-            .unwrap();
-        q = q.filter(schema::appuser::username.eq(val));
+        let username =
+            serde_json::from_value::<String>(username.unwrap().clone())
+                .unwrap();
+        if username.starts_with("archive::") {
+            return err::res_msg("cannot accept archived usernames");
+        }
+        q = q.filter(schema::appuser::username.eq(username));
     }
 
-    let id = q
+    let username = q
+        .select(schema::appuser::username)
+        .get_result::<String>(con)
+        .unwrap();
+    let archived_username = "archived::".to_string() + username.as_str();
+
+    let id = diesel::update(schema::appuser::table)
+        .filter(schema::appuser::username.eq(username))
+        .set(schema::appuser::username.eq(archived_username))
         .returning(schema::appuser::id)
         .get_result::<Id>(con)
         .unwrap();
@@ -107,7 +126,8 @@ pub fn del(sq: &Query, con: &mut Con) -> Res<()> {
 
 pub fn get_by_id(id: i32, con: &mut Con) -> Res<User> {
     Ok(schema::appuser::table
-        .find(id)
+        .filter(schema::appuser::id.eq(id))
+        .filter(schema::appuser::username.not_like("archived::%"))
         .select(UserTable::as_select())
         .first(con)
         .unwrap()
@@ -118,6 +138,9 @@ pub fn get_by_username(
     username: &String,
     con: &mut Con,
 ) -> Res<(User, String)> {
+    if username.starts_with("archive::") {
+        return err::res_msg("cannot accept archived usernames");
+    }
     let user: UserTable = schema::appuser::table
         .filter(schema::appuser::username.eq(username))
         .select(UserTable::as_select())
@@ -129,6 +152,7 @@ pub fn get_by_username(
 pub fn get_by_rt(rt: &String, con: &mut Con) -> Res<(User, String)> {
     let user: UserTable = schema::appuser::table
         .filter(schema::appuser::rt.eq(rt))
+        .filter(schema::appuser::username.not_like("archived::%"))
         .select(UserTable::as_select())
         .first(con)
         .unwrap();
@@ -136,6 +160,7 @@ pub fn get_by_rt(rt: &String, con: &mut Con) -> Res<(User, String)> {
 }
 
 pub fn del_rt(rt: &String, con: &mut Con) -> Res<()> {
+    // here we can delete rt even for archived users
     diesel::update(schema::appuser::table.filter(schema::appuser::rt.eq(rt)))
         .set(schema::appuser::rt.eq::<Option<String>>(None))
         .execute(con)
@@ -148,6 +173,9 @@ pub fn set_rt_for_username(
     rt: &String,
     con: &mut Con,
 ) -> Res<()> {
+    if username.starts_with("archive::") {
+        return err::res_msg("cannot accept archived usernames");
+    }
     diesel::update(
         schema::appuser::table.filter(schema::appuser::username.eq(username)),
     )
@@ -159,6 +187,7 @@ pub fn set_rt_for_username(
 
 pub fn get_many_as_ids(con: &mut Con) -> Res<Vec<Id>> {
     let ids = schema::appuser::table
+        .filter(schema::appuser::username.not_like("archived::%"))
         .select(schema::appuser::id)
         .get_results::<Id>(con)
         .unwrap();
