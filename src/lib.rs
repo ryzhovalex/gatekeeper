@@ -1,15 +1,14 @@
-use std::{borrow::Borrow, env::var, fs::File, io::Read};
+use std::{env::var, fs::File, io::Read};
 
 use axum::{
-    body::to_bytes,
     extract::Request,
-    http::{request, HeaderMap},
+    http::HeaderMap,
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::post,
     Json, Router,
 };
-use diesel::{prelude::Insertable, IntoSql};
+use diesel::prelude::Insertable;
 use password::check_password;
 use quco::Query;
 use ryz::{
@@ -20,7 +19,7 @@ use ryz::{
     time::Time,
 };
 use serde::{Deserialize, Serialize};
-use token::{create_at, verify_rt};
+use token::{new_at, verify_rt};
 use user::{get_by_id, get_by_rt, User};
 use user_change::UserChange;
 
@@ -29,8 +28,7 @@ mod password;
 pub mod quco;
 pub mod ryz;
 mod schema;
-mod sql;
-mod token;
+pub mod token;
 pub mod user;
 pub mod user_change;
 
@@ -153,7 +151,7 @@ async fn rpc_login(Json(login): Json<Login>) -> Res<String> {
     if !check_password(&login.password, &hpassword) {
         return err::res_msg("incorrect password");
     }
-    let rt = token::create_rt(user.id).unwrap();
+    let rt = token::new_rt(user.id).unwrap();
     let con = &mut db::con().unwrap();
     user::set_rt_for_username(&login.username, &rt, con).unwrap();
     Ok(rt)
@@ -178,7 +176,7 @@ async fn rpc_access(Json(rtdata): Json<RtData>) -> Res<String> {
         return err::res_msg("no such refresh token for user");
     }
     // we don't store access tokens since they intended to be short-lived
-    Ok(create_at(claims.user_id).unwrap())
+    Ok(new_at(claims.user_id).unwrap())
 }
 
 async fn rpc_get_user_changes(

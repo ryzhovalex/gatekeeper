@@ -1,11 +1,4 @@
-use std::borrow::Borrow;
-
-use crate::{
-    get_mode, ryz::{
-        err::{self, Error},
-        res::Res,
-    }, Apprc, SqlCfg, APPRC
-};
+use crate::{ryz::res::Res, APPRC};
 use diesel::{connection::SimpleConnection, Connection, PgConnection};
 
 pub type Con = PgConnection;
@@ -16,9 +9,8 @@ pub type Sid = String;
 
 pub fn con() -> Res<PgConnection> {
     let cfg = &APPRC.sql;
-    let mut con = PgConnection::establish(&cfg.url)
-        .unwrap_or_else(|_| panic!("cannot connect to db"));
-    Ok(con)
+    Ok(PgConnection::establish(&cfg.url)
+        .unwrap_or_else(|_| panic!("cannot connect to db")))
 }
 
 pub fn truncate_tables_if_allowed() {

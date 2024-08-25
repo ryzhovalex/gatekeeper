@@ -33,6 +33,9 @@ pub trait Expire {
     fn check_exp(&self, delta: Time) -> Res<Time> {
         let created = *&self.get_created().unwrap();
         let exp = created + delta;
+        dbg!(created);
+        dbg!(exp);
+        dbg!(delta);
         if exp > utc() {
             return res("exp_err", "expired token");
         }
@@ -40,7 +43,7 @@ pub trait Expire {
     }
 }
 
-pub fn create_token(
+pub fn new_token(
     payload: &(impl ToBase64 + Expire + Serialize),
     secret: &[u8],
 ) -> Res<String> {
@@ -59,20 +62,20 @@ where
     Ok(payload)
 }
 
-pub fn create_rt(user_id: i32) -> Res<String> {
+pub fn new_rt(user_id: i32) -> Res<String> {
     let payload = UserTokenPayload {
         user_id: user_id,
         created: utc(),
     };
-    create_token(&payload, b"weloveauth")
+    new_token(&payload, b"weloveauth")
 }
 
-pub fn create_at(user_id: i32) -> Res<String> {
+pub fn new_at(user_id: i32) -> Res<String> {
     let payload = UserTokenPayload {
         user_id: user_id,
         created: utc(),
     };
-    create_token(&payload, b"helloworld")
+    new_token(&payload, b"helloworld")
 }
 
 pub fn verify_rt(rt: &String) -> Res<UserTokenPayload> {

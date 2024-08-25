@@ -4,7 +4,13 @@ use std::collections::HashMap;
 
 use axum_test::TestServer;
 use corund_lib::{
-    db::{self, truncate_tables_if_allowed}, get_mode, get_router, quco::Query, ryz::time::utc, user::{self, User}, user_change::{self, ChangeAction, UserChange}, Reg
+    db::{self, truncate_tables_if_allowed},
+    get_router,
+    quco::Query,
+    ryz::time::utc,
+    user::{self, User},
+    user_change::{self, ChangeAction, UserChange},
+    Reg,
 };
 use serde_json::Value;
 
@@ -105,14 +111,19 @@ async fn get_user_changes_std_ok() {
         con,
     )
     .unwrap();
-    user::del(&Query::from([("username".to_string(), Value::String("world".to_string()))]), con).unwrap();
+    user::del(
+        &Query::from([(
+            "username".to_string(),
+            Value::String("world".to_string()),
+        )]),
+        con,
+    )
+    .unwrap();
 
     let server = new_test_server();
     let response = server
         .post((URL.to_string() + "/server/get_user_changes").as_str())
-        .json(&HashMap::from([
-            ("from", test_start_time)
-        ]))
+        .json(&HashMap::from([("from", test_start_time)]))
         .add_header("domain_secret", DOMAIN_SECRET)
         .await;
     assert_eq!(response.status_code(), 200);
