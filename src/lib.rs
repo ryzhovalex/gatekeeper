@@ -20,7 +20,7 @@ use ryz::{
 };
 use serde::{Deserialize, Serialize};
 use token::{new_at, verify_rt};
-use user::{get_by_id, get_by_rt, User};
+use user::{get_by_id, get_by_rt, GetUsers, User};
 use user_change::UserChange;
 
 pub mod db;
@@ -189,6 +189,16 @@ async fn rpc_get_user_changes(
     Ok(Json(changes))
 }
 
+async fn rpc_get_users(
+    headers: HeaderMap,
+    Json(inp): Json<GetUsers>,
+) -> Res<Json<Vec<User>>> {
+    verify_domain_secret_from_headers(headers)?;
+    let con = &mut db::con().unwrap();
+    let users = user::get_many(inp.sq, con).unwrap();
+    Ok(Json(users))
+}
+
 fn verify_domain_secret_from_headers(headers: HeaderMap) -> Res<()> {
     match headers.get("domain_secret") {
         Some(secret) => {
@@ -211,5 +221,6 @@ pub fn get_router() -> Router {
         .route("/rpc/server/reg", post(rpc_reg))
         .route("/rpc/server/dereg", post(rpc_dereg))
         .route("/rpc/server/get_user_changes", post(rpc_get_user_changes))
+        .route("/rpc/server/get_users", post(rpc_get_users))
         .layer(middleware::from_fn(err_middleware))
 }

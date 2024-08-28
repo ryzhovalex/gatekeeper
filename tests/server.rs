@@ -136,3 +136,44 @@ async fn get_user_changes_std_ok() {
     assert!(changes[2].user_id == user2.id);
     assert!(changes[2].action == ChangeAction::Del);
 }
+
+#[tokio::test]
+async fn get_users_direct_id_ok() {
+    truncate_tables_if_allowed();
+    let con = &mut db::con().unwrap();
+
+    let user1 = user::new(
+        &Reg {
+            username: "hello".to_string(),
+            password: "1234".to_string(),
+            firstname: None,
+            patronym: None,
+            surname: None,
+        },
+        con,
+    )
+    .unwrap();
+    let user2 = user::new(
+        &Reg {
+            username: "world".to_string(),
+            password: "1234".to_string(),
+            firstname: None,
+            patronym: None,
+            surname: None,
+        },
+        con,
+    )
+    .unwrap();
+
+    let server = new_test_server();
+    let response = server
+        .post((URL.to_string() + "/server/get_users").as_str())
+        .add_header("domain_secret", DOMAIN_SECRET)
+        .json(&HashMap::from([("id", 1)]))
+        .await;
+
+    assert_eq!(response.status_code(), 200);
+    let users: Vec<User> = response.json();
+    assert!(users.len() == 1);
+    assert!(users[0] == user1);
+}

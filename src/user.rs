@@ -6,11 +6,16 @@ use crate::{
     db::{Con, Id},
     password::hash_password,
     quco::{Collection, Query},
-    ryz::{err, res::Res},
+    ryz::{dict, err, res::Res},
     schema,
     user_change::{self, ChangeAction, NewUserChange},
     InsertReg, Reg,
 };
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetUsers {
+    pub sq: Query,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
@@ -20,6 +25,17 @@ pub struct User {
     pub patronym: Option<String>,
     pub surname: Option<String>,
     pub rt: Option<String>,
+}
+
+impl PartialEq for User {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.username == other.username
+            && self.firstname == other.firstname
+            && self.patronym == other.patronym
+            && self.surname == other.surname
+            && self.rt == other.rt
+    }
 }
 
 #[derive(Queryable, Selectable)]
@@ -192,4 +208,44 @@ pub fn get_many_as_ids(con: &mut Con) -> Res<Vec<Id>> {
         .get_results::<Id>(con)
         .unwrap();
     Ok(ids)
+}
+
+pub fn get_many(sq: Query, con: &mut PgConnection) -> Res<Vec<User>> {
+    let mut q = schema::appuser::table.into_boxed();
+    for (k, v) in sq {
+        match k.as_str() {
+            // we only support either direct `{"field": value}` or `$in` search
+            // `{"field": {"$in": [...]}}`
+            "id" => {
+                let parsed = serde_json::from_value::<
+                    dict::dict<String, Vec<Id>>,
+                >(v.clone());
+                if parsed.is_err() {
+                    let parsed = serde_json::from_value::<Id>(v).unwrap();
+                    q = q.filter(schema::appuser::id.eq(parsed));
+                }
+            }
+            "username" => {
+                let v = serde_json::from_value::<String>(v).unwrap();
+                q = q.filter(schema::appuser::username.eq(v));
+                // if username.starts_with("archive::") {
+                //     return err::res_msg("cannot accept archived usernames");
+                // }
+            }
+            "firstname" => {
+                let v = serde_json::from_value::<String>(v).unwrap();
+                q = q.filter(schema::appuser::firstname.eq(v));
+            }
+            _ => return err::res_msg("unrecognized field"),
+        }
+    }
+
+    let users: Vec<User> = q
+        .select(UserTable::as_select())
+        .get_results(con)
+        .unwrap()
+        .iter()
+        .map(|x| x.to_msg())
+        .collect();
+    Ok(users)
 }
