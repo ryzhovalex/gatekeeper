@@ -216,6 +216,8 @@ pub fn get_many(sq: Query, con: &mut PgConnection) -> Res<Vec<User>> {
         match k.as_str() {
             // we only support either direct `{"field": value}` or `$in` search
             // `{"field": {"$in": [...]}}`
+            //
+            // for now `in` also supported only for id
             "id" => {
                 let parsed = serde_json::from_value::<
                     dict::dict<String, Vec<Id>>,
@@ -223,6 +225,9 @@ pub fn get_many(sq: Query, con: &mut PgConnection) -> Res<Vec<User>> {
                 if parsed.is_err() {
                     let parsed = serde_json::from_value::<Id>(v).unwrap();
                     q = q.filter(schema::appuser::id.eq(parsed));
+                } else {
+                    let parsed = parsed.unwrap().get("$in").unwrap().clone();
+                    q = q.filter(schema::appuser::id.eq_any(parsed));
                 }
             }
             "username" => {

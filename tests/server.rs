@@ -8,11 +8,11 @@ use corund_lib::{
     get_router,
     quco::Query,
     ryz::time::utc,
-    user::{self, User},
+    user::{self, GetUsers, User},
     user_change::{self, ChangeAction, UserChange},
     Reg,
 };
-use serde_json::Value;
+use serde_json::{json, Value};
 
 static URL: &str = "http://localhost:3000/rpc";
 static DOMAIN_SECRET: &str = "backtomegaton";
@@ -153,6 +153,49 @@ async fn get_users_direct_id_ok() {
         con,
     )
     .unwrap();
+    user::new(
+        &Reg {
+            username: "world".to_string(),
+            password: "1234".to_string(),
+            firstname: None,
+            patronym: None,
+            surname: None,
+        },
+        con,
+    )
+    .unwrap();
+
+    let server = new_test_server();
+    let response = server
+        .post((URL.to_string() + "/server/get_users").as_str())
+        .add_header("domain_secret", DOMAIN_SECRET)
+        .json(&GetUsers {sq: Query::from([
+            ("id".to_string(), json!(1)),
+        ])})
+        .await;
+
+    assert!(response.status_code() == 200, "{}", response.text());
+    let users: Vec<User> = response.json();
+    assert!(users.len() == 1);
+    assert!(users[0] == user1);
+}
+
+#[tokio::test]
+async fn get_users_in_id_ok() {
+    truncate_tables_if_allowed();
+    let con = &mut db::con().unwrap();
+
+    let user1 = user::new(
+        &Reg {
+            username: "hello".to_string(),
+            password: "1234".to_string(),
+            firstname: None,
+            patronym: None,
+            surname: None,
+        },
+        con,
+    )
+    .unwrap();
     let user2 = user::new(
         &Reg {
             username: "world".to_string(),
@@ -169,11 +212,18 @@ async fn get_users_direct_id_ok() {
     let response = server
         .post((URL.to_string() + "/server/get_users").as_str())
         .add_header("domain_secret", DOMAIN_SECRET)
-        .json(&HashMap::from([("id", 1)]))
+        .json(&json!({
+            "sq": json!({
+                "id": json!({
+                    "$in": json!(vec![1, 2])
+                })
+            })
+        }))
         .await;
 
-    assert_eq!(response.status_code(), 200);
+    assert!(response.status_code() == 200, "{}", response.text());
     let users: Vec<User> = response.json();
-    assert!(users.len() == 1);
+    assert!(users.len() == 2);
     assert!(users[0] == user1);
+    assert!(users[1] == user2);
 }
