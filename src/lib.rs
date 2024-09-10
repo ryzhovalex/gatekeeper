@@ -226,9 +226,7 @@ fn panic_middleware(
     };
     let body = json!({
         "code": "panic",
-        "msg": {
-            "msg": msg
-        }
+        "msg": msg
     });
 
     (

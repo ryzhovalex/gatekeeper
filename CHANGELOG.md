@@ -1,3 +1,7 @@
+# 0.4.0
+
+- add error and panic handling
+
 # 0.3.0
 
 - add `/rpc/server/get_users`
