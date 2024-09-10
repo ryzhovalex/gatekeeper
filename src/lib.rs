@@ -2,7 +2,7 @@ use std::{env::var, fs::File, io::Read};
 
 use axum::{
     extract::Request,
-    http::HeaderMap,
+    http::{HeaderMap, Method, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::post,
@@ -19,7 +19,10 @@ use ryz::{
     time::Time,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use token::{new_at, verify_rt};
+use tower_http::catch_panic::CatchPanicLayer;
+use tower_http::cors::{Any, CorsLayer};
 use user::{get_by_id, get_by_rt, GetUsers, User};
 use user_change::UserChange;
 
@@ -106,18 +109,9 @@ struct GetChanges {
     from: Time,
 }
 
-async fn err_middleware(req: Request, next: Next) -> Response {
-    let res = next.run(req).await;
-
-    // TODO: handle status codes for errs somehow without knowing response
-    //       body type... don't even know how, for now
-
-    res
-}
-
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        Json(self).into_response()
+        (StatusCode::BAD_REQUEST, Json(self)).into_response()
     }
 }
 
@@ -211,6 +205,39 @@ fn verify_domain_secret_from_headers(headers: HeaderMap) -> Res<()> {
     Ok(())
 }
 
+async fn err_middleware(req: Request, next: Next) -> Response {
+    let res = next.run(req).await;
+
+    // TODO: handle status codes for errs somehow without knowing response
+    //       body type... don't even know how, for now
+
+    res
+}
+
+fn panic_middleware(
+    panic_err: Box<dyn std::any::Any + Send + 'static>,
+) -> Response {
+    let msg = if let Some(s) = panic_err.downcast_ref::<String>() {
+        s.clone()
+    } else if let Some(s) = panic_err.downcast_ref::<&str>() {
+        s.to_string()
+    } else {
+        "panic".to_string()
+    };
+    let body = json!({
+        "code": "panic",
+        "msg": {
+            "msg": msg
+        }
+    });
+
+    (
+        StatusCode::BAD_REQUEST,
+        Json(body),
+    )
+        .into_response()
+}
+
 pub fn get_router() -> Router {
     Router::new()
         .route("/rpc/login", post(rpc_login))
@@ -222,5 +249,12 @@ pub fn get_router() -> Router {
         .route("/rpc/server/dereg", post(rpc_dereg))
         .route("/rpc/server/get_user_changes", post(rpc_get_user_changes))
         .route("/rpc/server/get_users", post(rpc_get_users))
+        .layer(CatchPanicLayer::custom(panic_middleware))
         .layer(middleware::from_fn(err_middleware))
+        .layer(
+            CorsLayer::new()
+                .allow_methods([Method::POST])
+                .allow_origin(Any)
+                .allow_headers(Any),
+        )
 }

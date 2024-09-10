@@ -7,8 +7,8 @@ async fn main() {
 
     // let args: Vec<String> = env::args().collect();
 
-    info!("start server http://0.0.0.0:3000");
+    info!("start server http://0.0.0.0:9014");
     let listener =
-        tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+        tokio::net::TcpListener::bind("0.0.0.0:9014").await.unwrap();
     axum::serve(listener, get_router()).await.unwrap();
 }

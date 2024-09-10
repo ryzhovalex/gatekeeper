@@ -169,9 +169,9 @@ async fn get_users_direct_id_ok() {
     let response = server
         .post((URL.to_string() + "/server/get_users").as_str())
         .add_header("domain_secret", DOMAIN_SECRET)
-        .json(&GetUsers {sq: Query::from([
-            ("id".to_string(), json!(1)),
-        ])})
+        .json(&GetUsers {
+            sq: Query::from([("id".to_string(), json!(1))]),
+        })
         .await;
 
     assert!(response.status_code() == 200, "{}", response.text());
