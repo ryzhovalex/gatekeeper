@@ -1,0 +1,24 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: corund_app
+    depends_on:
+      - psql
+    restart: unless-stopped
+    ports:
+      - 9014:9014
+
+  psql:
+    image: postgres:15
+    container_name: corund_psql
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=corund
+      - POSTGRES_PASSWORD=corund
+      - POSTGRES_DB=corund_prod
+    volumes:
+      - ./var/release/prod/psql:/var/lib/postgresql/data
+    ports:
+      - 9015:5432

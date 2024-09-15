@@ -1,6 +1,6 @@
 prod:
   sql:
-    url: FILL
+    url: postgres://corund:corund@psql:5432/corund_prod
     is_cleaning_allowed: false
   domain:
     secret: stackunderflow
